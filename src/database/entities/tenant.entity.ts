@@ -23,8 +23,8 @@ export class Tenant {
   @Column({ name: "max_daily_appointments", type: "integer", default: 20 })
   maxDailyAppointments!: number;
 
-  @Column({ name: "minimum_booking_notice_minutes", type: "integer", default: 0 })
-  minimumBookingNoticeMinutes!: number;
+  @Column({ name: "minimum_booking_notice_hours", type: "integer", default: 0 })
+  minimumBookingNoticeHours!: number;
 
   @Column({ length: 20, default: "draft" })
   status!: "draft" | "published" | "unpublished";
