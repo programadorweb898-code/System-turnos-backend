@@ -8,7 +8,7 @@ export function validateCreateTenantInput(input: CreateTenantInput): void {
   validateTimezone(input.timezone);
   validateBookingRules(
     input.maxDailyAppointments,
-    input.minimumBookingNoticeMinutes
+    input.minimumBookingNoticeHours
   );
 }
 
@@ -18,7 +18,7 @@ export function validateUpdateTenantInput(input: UpdateTenantInput): void {
   if (input.timezone !== undefined) validateTimezone(input.timezone);
   validateBookingRules(
     input.maxDailyAppointments,
-    input.minimumBookingNoticeMinutes
+    input.minimumBookingNoticeHours
   );
 }
 
@@ -46,7 +46,7 @@ function validateTimezone(value: string): void {
 
 function validateBookingRules(
   maxDailyAppointments: number | undefined,
-  minimumBookingNoticeMinutes: number | undefined
+  minimumBookingNoticeHours: number | undefined
 ): void {
   if (
     maxDailyAppointments !== undefined &&
@@ -56,10 +56,10 @@ function validateBookingRules(
   }
 
   if (
-    minimumBookingNoticeMinutes !== undefined &&
-    (!Number.isInteger(minimumBookingNoticeMinutes) ||
-      minimumBookingNoticeMinutes < 0)
+    minimumBookingNoticeHours !== undefined &&
+    (!Number.isInteger(minimumBookingNoticeHours) ||
+      minimumBookingNoticeHours < 0)
   ) {
-    throw new Error("La anticipación mínima no puede ser negativa.");
+    throw new Error("La anticipación mínima en horas no puede ser negativa.");
   }
 }
