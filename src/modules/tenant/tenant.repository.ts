@@ -22,14 +22,14 @@ export class TenantRepository {
     slug: string,
     timezone: string,
     maxDailyAppointments = 20,
-    minimumBookingNoticeMinutes = 0
+    minimumBookingNoticeHours = 0
   ): Promise<Tenant> {
     const tenant = this.repository.create({
       name,
       slug,
       timezone,
       maxDailyAppointments,
-      minimumBookingNoticeMinutes,
+      minimumBookingNoticeHours,
       status: "draft"
     });
     return this.repository.save(tenant);
