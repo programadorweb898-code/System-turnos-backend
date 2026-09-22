@@ -17,8 +17,21 @@ export class TenantRepository {
     return this.repository.findOne({ where: { slug } });
   }
 
-  async create(name: string, slug: string, timezone: string): Promise<Tenant> {
-    const tenant = this.repository.create({ name, slug, timezone, status: "draft" });
+  async create(
+    name: string,
+    slug: string,
+    timezone: string,
+    maxDailyAppointments = 20,
+    minimumBookingNoticeMinutes = 0
+  ): Promise<Tenant> {
+    const tenant = this.repository.create({
+      name,
+      slug,
+      timezone,
+      maxDailyAppointments,
+      minimumBookingNoticeMinutes,
+      status: "draft"
+    });
     return this.repository.save(tenant);
   }
 
