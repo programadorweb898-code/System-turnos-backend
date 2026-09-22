@@ -8,6 +8,10 @@ module.exports = {
             syntax: "typescript",
             decorators: true
           },
+          transform: {
+            legacyDecorator: true,
+            decoratorMetadata: true
+          },
           target: "es2022"
         },
         module: {
