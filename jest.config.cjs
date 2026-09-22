@@ -1,5 +1,4 @@
 module.exports = {
-  extensionsToTreatAsEsm: [".ts", ".tsx"],
   transform: {
     "^.+\\.(t|j)sx?$": [
       "@swc/jest",
@@ -12,10 +11,13 @@ module.exports = {
           target: "es2022"
         },
         module: {
-          type: "es6"
+          type: "commonjs"
         }
       }
     ]
+  },
+  moduleNameMapper: {
+    "^(\\.{1,2}/.*)\\.js$": "$1"
   },
   testEnvironment: "node"
 };
