@@ -19,5 +19,6 @@ module.exports = {
   moduleNameMapper: {
     "^(\\.{1,2}/.*)\\.js$": "$1"
   },
+  setupFiles: ["<rootDir>/src/test/setup.ts"],
   testEnvironment: "node"
 };
