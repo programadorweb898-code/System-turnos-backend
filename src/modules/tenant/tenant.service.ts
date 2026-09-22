@@ -20,7 +20,9 @@ export class TenantService {
     return this.tenantRepository.create(
       input.name.trim(),
       input.slug,
-      input.timezone
+      input.timezone,
+      input.maxDailyAppointments,
+      input.minimumBookingNoticeMinutes
     );
   }
 
@@ -42,7 +44,13 @@ export class TenantService {
     Object.assign(tenant, {
       ...(input.name !== undefined ? { name: input.name.trim() } : {}),
       ...(input.slug !== undefined ? { slug: input.slug } : {}),
-      ...(input.timezone !== undefined ? { timezone: input.timezone } : {})
+      ...(input.timezone !== undefined ? { timezone: input.timezone } : {}),
+      ...(input.maxDailyAppointments !== undefined
+        ? { maxDailyAppointments: input.maxDailyAppointments }
+        : {}),
+      ...(input.minimumBookingNoticeMinutes !== undefined
+        ? { minimumBookingNoticeMinutes: input.minimumBookingNoticeMinutes }
+        : {})
     });
 
     return this.tenantRepository.update(tenant);
