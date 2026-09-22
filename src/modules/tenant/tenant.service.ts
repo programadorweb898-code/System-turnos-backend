@@ -22,7 +22,7 @@ export class TenantService {
       input.slug,
       input.timezone,
       input.maxDailyAppointments,
-      input.minimumBookingNoticeMinutes
+      input.minimumBookingNoticeHours
     );
   }
 
@@ -48,8 +48,8 @@ export class TenantService {
       ...(input.maxDailyAppointments !== undefined
         ? { maxDailyAppointments: input.maxDailyAppointments }
         : {}),
-      ...(input.minimumBookingNoticeMinutes !== undefined
-        ? { minimumBookingNoticeMinutes: input.minimumBookingNoticeMinutes }
+      ...(input.minimumBookingNoticeHours !== undefined
+        ? { minimumBookingNoticeHours: input.minimumBookingNoticeHours }
         : {})
     });
 
