@@ -6,12 +6,13 @@ import { Service } from "./entities/service.entity.js";
 import { Employee } from "./entities/employee.entity.js";
 import { BusinessHour } from "./entities/business-hour.entity.js";
 import { BlockedTime } from "./entities/blocked-time.entity.js";
+import { User } from "./entities/user.entity.js";
 
 export const AppDataSource = new DataSource({
   type: "postgres",
   url: env.databaseUrl,
   synchronize: false,
   logging: false,
-  entities: [Tenant, Service, Employee, BusinessHour, BlockedTime],
+  entities: [Tenant, Service, Employee, BusinessHour, BlockedTime, User],
   migrations: ["dist/database/migrations/*.js"]
 });
