@@ -6,10 +6,14 @@ export interface CreateTenantInput {
   name: string;
   slug: string;
   timezone: string;
+  maxDailyAppointments?: number;
+  minimumBookingNoticeMinutes?: number;
 }
 
 export interface UpdateTenantInput {
   name?: string;
   slug?: string;
   timezone?: string;
+  maxDailyAppointments?: number;
+  minimumBookingNoticeMinutes?: number;
 }
