@@ -8,12 +8,7 @@ import {
   UpdateDateColumn
 } from "typeorm";
 import { Tenant } from "./tenant.entity.js";
-
-export const USER_ROLES = ["ADMIN"] as const;
-export type UserRole = (typeof USER_ROLES)[number];
-
-export const USER_STATUSES = ["ACTIVE", "DISABLED"] as const;
-export type UserStatus = (typeof USER_STATUSES)[number];
+import { UserRole, UserStatus } from "../../modules/auth/auth.constants.js";
 
 @Entity({ name: "users" })
 export class User {
