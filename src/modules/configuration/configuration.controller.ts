@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { ConfigurationService } from "./configuration.service.js";
+import { createServiceRequestSchema } from "./configuration.validation.js";
 
 export class ConfigurationController {
   constructor(
@@ -45,13 +46,9 @@ export class ConfigurationController {
       return;
     }
 
-    const { name, description, duration } = req.body ?? {};
+    const result = createServiceRequestSchema.safeParse(req.body ?? {});
 
-    if (
-      typeof name !== "string" ||
-      (description !== undefined && typeof description !== "string") ||
-      !Number.isInteger(duration)
-    ) {
+    if (!result.success) {
       res.status(400).json({
         error: {
           code: "INVALID_REQUEST",
@@ -64,9 +61,7 @@ export class ConfigurationController {
     try {
       const service = await this.configurationService.createService({
         tenantId,
-        name,
-        description,
-        duration
+        ...result.data
       });
 
       res.status(201).json({
