@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { ConfigurationService } from "./configuration.service.js";
 import {
+  createBusinessHourRequestSchema,
   createEmployeeRequestSchema,
   createServiceRequestSchema,
   updateEmployeeStatusRequestSchema
@@ -195,6 +196,69 @@ export class ConfigurationController {
       id: employee.id,
       name: employee.name,
       status: employee.status
+    });
+  };
+
+  listBusinessHours = async (req: Request, res: Response): Promise<void> => {
+    const tenantId = req.authenticatedUser?.tenantId;
+
+    if (!tenantId) {
+      res.status(401).json({
+        error: {
+          code: "AUTHENTICATION_REQUIRED",
+          message: "Se requiere autenticación."
+        }
+      });
+      return;
+    }
+
+    const businessHours = await this.configurationService.listBusinessHours(tenantId);
+
+    res.status(200).json(
+      businessHours.map((businessHour) => ({
+        id: businessHour.id,
+        dayOfWeek: businessHour.dayOfWeek,
+        startTime: businessHour.startTime.slice(0, 5),
+        endTime: businessHour.endTime.slice(0, 5)
+      }))
+    );
+  };
+
+  createBusinessHour = async (req: Request, res: Response): Promise<void> => {
+    const tenantId = req.authenticatedUser?.tenantId;
+
+    if (!tenantId) {
+      res.status(401).json({
+        error: {
+          code: "AUTHENTICATION_REQUIRED",
+          message: "Se requiere autenticación."
+        }
+      });
+      return;
+    }
+
+    const result = createBusinessHourRequestSchema.safeParse(req.body ?? {});
+
+    if (!result.success) {
+      res.status(400).json({
+        error: {
+          code: "INVALID_REQUEST",
+          message: "Los datos del horario no son válidos."
+        }
+      });
+      return;
+    }
+
+    const businessHour = await this.configurationService.createBusinessHour({
+      tenantId,
+      ...result.data
+    });
+
+    res.status(201).json({
+      id: businessHour.id,
+      dayOfWeek: businessHour.dayOfWeek,
+      startTime: businessHour.startTime.slice(0, 5),
+      endTime: businessHour.endTime.slice(0, 5)
     });
   };
 
