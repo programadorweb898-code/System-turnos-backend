@@ -1,4 +1,5 @@
 import express from "express";
+import { createAuthRouter } from "./modules/auth/auth.routes.js";
 
 export const createApp = () => {
   const app = express();
@@ -10,6 +11,8 @@ export const createApp = () => {
       status: "ok"
     });
   });
+
+  app.use("/api/auth", createAuthRouter());
 
   return app;
 };
