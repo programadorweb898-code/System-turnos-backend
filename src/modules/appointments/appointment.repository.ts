@@ -23,8 +23,7 @@ export class AppointmentRepository {
   async getCreationContext(
     tenantId: string,
     serviceId: string,
-    startAt: Date,
-    endAt: Date
+    startAt: Date
   ): Promise<AppointmentCreationContext | null> {
     const tenantRepository = this.dataSource.getRepository(Tenant);
     const serviceRepository = this.dataSource.getRepository(Service);
@@ -38,6 +37,10 @@ export class AppointmentRepository {
       where: { id: serviceId, tenantId, status: "active" }
     });
     if (!service) return null;
+
+    const endAt = new Date(
+      startAt.getTime() + service.duration * 60_000
+    );
 
     const businessHours = await businessHourRepository.find({
       where: { tenantId },
