@@ -35,6 +35,14 @@ export const updateEmployeeStatusRequestSchema = z.object({
   status: z.enum(["active", "inactive"])
 });
 
+export const createBusinessHourRequestSchema = z.object({
+  dayOfWeek: z.number().int().min(0).max(6),
+  startTime: z.string().regex(TIME_PATTERN),
+  endTime: z.string().regex(TIME_PATTERN)
+}).refine((input) => input.startTime < input.endTime, {
+  message: "La hora de inicio debe ser anterior a la hora de fin."
+});
+
 const employeeStatusInputSchema = updateEmployeeStatusRequestSchema.extend({
   tenantId: z.string().min(1),
   employeeId: z.string().min(1)
