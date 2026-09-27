@@ -26,6 +26,16 @@ export class TenantService {
     );
   }
 
+  async getById(id: string): Promise<Tenant> {
+    const tenant = await this.tenantRepository.findById(id);
+
+    if (!tenant) {
+      throw new Error("El negocio no existe.");
+    }
+
+    return tenant;
+  }
+
   async update(id: string, input: UpdateTenantInput): Promise<Tenant> {
     validateUpdateTenantInput(input);
 
