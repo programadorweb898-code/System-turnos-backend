@@ -3,12 +3,14 @@ import {
   CreateBlockedTimeInput,
   CreateBusinessHourInput,
   CreateEmployeeInput,
-  CreateServiceInput
+  CreateServiceInput,
+  UpdateEmployeeStatusInput
 } from "./configuration.types.js";
 import {
   validateBlockedTimeInput,
   validateBusinessHourInput,
   validateEmployeeInput,
+  validateEmployeeStatusInput,
   validateServiceInput
 } from "./configuration.validation.js";
 
@@ -65,6 +67,16 @@ export class ConfigurationService {
 
   listEmployees(tenantId: string) {
     return this.repository.findEmployeesByTenant(tenantId);
+  }
+
+  async updateEmployeeStatus(input: UpdateEmployeeStatusInput) {
+    validateEmployeeStatusInput(input);
+
+    return this.repository.updateEmployeeStatus(
+      input.tenantId,
+      input.employeeId,
+      input.status
+    );
   }
 
   listBusinessHours(tenantId: string) {
