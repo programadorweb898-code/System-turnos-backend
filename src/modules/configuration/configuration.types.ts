@@ -10,6 +10,12 @@ export interface CreateEmployeeInput {
   name: string;
 }
 
+export interface UpdateEmployeeStatusInput {
+  tenantId: string;
+  employeeId: string;
+  status: "active" | "inactive";
+}
+
 export interface CreateBusinessHourInput {
   tenantId: string;
   dayOfWeek: number;
