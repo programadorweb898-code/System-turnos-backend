@@ -12,7 +12,7 @@ export const createApp = () => {
     });
   });
 
-  app.use("/api/auth", createAuthRouter());
+  app.use("/api/v1/auth", createAuthRouter());
 
   return app;
 };
