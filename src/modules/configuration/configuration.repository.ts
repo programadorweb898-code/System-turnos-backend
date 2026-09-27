@@ -69,6 +69,23 @@ export class ConfigurationRepository {
     });
   }
 
+  async updateEmployeeStatus(
+    tenantId: string,
+    employeeId: string,
+    status: Employee["status"]
+  ): Promise<Employee | null> {
+    const employee = await this.employees.findOne({
+      where: { id: employeeId, tenantId }
+    });
+
+    if (!employee) {
+      return null;
+    }
+
+    employee.status = status;
+    return this.employees.save(employee);
+  }
+
   findBusinessHoursByTenant(tenantId: string): Promise<BusinessHour[]> {
     return this.businessHours.find({
       where: { tenantId },
