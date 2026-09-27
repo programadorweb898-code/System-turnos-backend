@@ -20,8 +20,7 @@ export class AppointmentService {
     const context = await this.repository.getCreationContext(
       input.tenantId,
       input.serviceId,
-      startAt,
-      new Date(startAt.getTime() + 1)
+      startAt
     );
 
     if (!context) {
