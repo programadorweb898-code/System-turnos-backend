@@ -1,6 +1,6 @@
 import { ConfigurationService } from "./configuration.service.js";
 
-describe("ConfigurationService - professionals", () => {
+describe("ConfigurationService - configuration", () => {
   it("crea un profesional con el tenant recibido", async () => {
     const repository = {
       createEmployee: jest.fn().mockResolvedValue({
@@ -65,5 +65,53 @@ describe("ConfigurationService - professionals", () => {
     ).rejects.toThrow();
 
     expect(repository.updateEmployeeStatus).not.toHaveBeenCalled();
+  });
+});
+
+
+describe("ConfigurationService - business hours", () => {
+  it("crea un horario usando el tenant recibido", async () => {
+    const repository = {
+      createBusinessHour: jest.fn().mockResolvedValue({
+        id: "hour-1",
+        tenantId: "tenant-1",
+        dayOfWeek: 1,
+        startTime: "09:00",
+        endTime: "17:00"
+      })
+    };
+
+    const service = new ConfigurationService(repository);
+
+    await service.createBusinessHour({
+      tenantId: "tenant-1",
+      dayOfWeek: 1,
+      startTime: "09:00",
+      endTime: "17:00"
+    });
+
+    expect(repository.createBusinessHour).toHaveBeenCalledWith(
+      "tenant-1",
+      1,
+      "09:00",
+      "17:00"
+    );
+  });
+
+  it("rechaza un horario inválido antes de acceder al repositorio", async () => {
+    const repository = {
+      createBusinessHour: jest.fn()
+    };
+
+    const service = new ConfigurationService(repository);
+
+    await expect(service.createBusinessHour({
+      tenantId: "tenant-1",
+      dayOfWeek: 1,
+      startTime: "17:00",
+      endTime: "09:00"
+    })).rejects.toThrow();
+
+    expect(repository.createBusinessHour).not.toHaveBeenCalled();
   });
 });
