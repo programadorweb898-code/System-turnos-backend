@@ -133,4 +133,180 @@ describe("ConfigurationController", () => {
     expect(configurationService.createService).not.toHaveBeenCalled();
     expect(response.status).toHaveBeenCalledWith(400);
   });
+  it("lista profesionales del tenant autenticado", async () => {
+    const employees = [
+      {
+        id: "employee-1",
+        name: "Juan",
+        status: "active"
+      }
+    ];
+
+    const configurationService = {
+      listEmployees: jest.fn().mockResolvedValue(employees)
+    };
+
+    const controller = new ConfigurationController(configurationService);
+    const response = createResponseMock();
+
+    await controller.listEmployees(
+      {
+        authenticatedUser: {
+          id: "user-1",
+          tenantId: "tenant-1",
+          role: "ADMIN"
+        }
+      } as never,
+      response as never
+    );
+
+    expect(configurationService.listEmployees).toHaveBeenCalledWith("tenant-1");
+    expect(response.status).toHaveBeenCalledWith(200);
+    expect(response.json).toHaveBeenCalledWith(employees);
+  });
+
+  it("crea un profesional usando el tenant autenticado", async () => {
+    const employee = {
+      id: "employee-1",
+      name: "Juan",
+      status: "active"
+    };
+
+    const configurationService = {
+      createEmployee: jest.fn().mockResolvedValue(employee)
+    };
+
+    const controller = new ConfigurationController(configurationService);
+    const response = createResponseMock();
+
+    await controller.createEmployee(
+      {
+        authenticatedUser: {
+          id: "user-1",
+          tenantId: "tenant-1",
+          role: "ADMIN"
+        },
+        body: {
+          tenantId: "tenant-otro",
+          name: " Juan "
+        }
+      } as never,
+      response as never
+    );
+
+    expect(configurationService.createEmployee).toHaveBeenCalledWith({
+      tenantId: "tenant-1",
+      name: "Juan"
+    });
+    expect(response.status).toHaveBeenCalledWith(201);
+  });
+
+  it("rechaza crear un profesional sin nombre válido", async () => {
+    const configurationService = {
+      createEmployee: jest.fn()
+    };
+
+    const controller = new ConfigurationController(configurationService);
+    const response = createResponseMock();
+
+    await controller.createEmployee(
+      {
+        authenticatedUser: {
+          id: "user-1",
+          tenantId: "tenant-1",
+          role: "ADMIN"
+        },
+        body: { name: "   " }
+      } as never,
+      response as never
+    );
+
+    expect(configurationService.createEmployee).not.toHaveBeenCalled();
+    expect(response.status).toHaveBeenCalledWith(400);
+  });
+
+  it("actualiza el estado de un profesional del tenant autenticado", async () => {
+    const employee = {
+      id: "employee-1",
+      name: "Juan",
+      status: "inactive"
+    };
+
+    const configurationService = {
+      updateEmployeeStatus: jest.fn().mockResolvedValue(employee)
+    };
+
+    const controller = new ConfigurationController(configurationService);
+    const response = createResponseMock();
+
+    await controller.updateEmployeeStatus(
+      {
+        authenticatedUser: {
+          id: "user-1",
+          tenantId: "tenant-1",
+          role: "ADMIN"
+        },
+        params: { id: "employee-1" },
+        body: { status: "inactive" }
+      } as never,
+      response as never
+    );
+
+    expect(configurationService.updateEmployeeStatus).toHaveBeenCalledWith({
+      tenantId: "tenant-1",
+      employeeId: "employee-1",
+      status: "inactive"
+    });
+    expect(response.status).toHaveBeenCalledWith(200);
+  });
+
+  it("devuelve 404 si el profesional no pertenece al tenant", async () => {
+    const configurationService = {
+      updateEmployeeStatus: jest.fn().mockResolvedValue(null)
+    };
+
+    const controller = new ConfigurationController(configurationService);
+    const response = createResponseMock();
+
+    await controller.updateEmployeeStatus(
+      {
+        authenticatedUser: {
+          id: "user-1",
+          tenantId: "tenant-1",
+          role: "ADMIN"
+        },
+        params: { id: "employee-otro" },
+        body: { status: "inactive" }
+      } as never,
+      response as never
+    );
+
+    expect(response.status).toHaveBeenCalledWith(404);
+  });
+
+  it("rechaza un estado de profesional inválido", async () => {
+    const configurationService = {
+      updateEmployeeStatus: jest.fn()
+    };
+
+    const controller = new ConfigurationController(configurationService);
+    const response = createResponseMock();
+
+    await controller.updateEmployeeStatus(
+      {
+        authenticatedUser: {
+          id: "user-1",
+          tenantId: "tenant-1",
+          role: "ADMIN"
+        },
+        params: { id: "employee-1" },
+        body: { status: "deleted" }
+      } as never,
+      response as never
+    );
+
+    expect(configurationService.updateEmployeeStatus).not.toHaveBeenCalled();
+    expect(response.status).toHaveBeenCalledWith(400);
+  });
+
 });
