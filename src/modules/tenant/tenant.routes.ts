@@ -1,0 +1,13 @@
+import { Router } from "express";
+import { requireAuthentication } from "../auth/auth.middleware.js";
+import { TenantController } from "./tenant.controller.js";
+
+export const createTenantRouter = (
+  tenantController = new TenantController()
+): Router => {
+  const router = Router();
+
+  router.get("/tenant", requireAuthentication(), tenantController.getCurrent);
+
+  return router;
+};
