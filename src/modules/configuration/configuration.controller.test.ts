@@ -310,3 +310,96 @@ describe("ConfigurationController", () => {
   });
 
 });
+
+
+describe("ConfigurationController - business hours", () => {
+  function createResponseMock() {
+    return {
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn()
+    };
+  }
+
+  it("lista horarios del tenant autenticado", async () => {
+    const businessHours = [
+      {
+        id: "hour-1",
+        dayOfWeek: 1,
+        startTime: "09:00:00",
+        endTime: "17:00:00"
+      }
+    ];
+    const configurationService = {
+      listBusinessHours: jest.fn().mockResolvedValue(businessHours)
+    };
+    const controller = new ConfigurationController(configurationService);
+    const response = createResponseMock();
+
+    await controller.listBusinessHours({
+      authenticatedUser: { id: "user-1", tenantId: "tenant-1", role: "ADMIN" }
+    } as never, response as never);
+
+    expect(configurationService.listBusinessHours).toHaveBeenCalledWith("tenant-1");
+    expect(response.status).toHaveBeenCalledWith(200);
+    expect(response.json).toHaveBeenCalledWith([
+      { id: "hour-1", dayOfWeek: 1, startTime: "09:00", endTime: "17:00" }
+    ]);
+  });
+
+  it("rechaza listar horarios sin autenticación", async () => {
+    const configurationService = { listBusinessHours: jest.fn() };
+    const controller = new ConfigurationController(configurationService);
+    const response = createResponseMock();
+
+    await controller.listBusinessHours({} as never, response as never);
+
+    expect(configurationService.listBusinessHours).not.toHaveBeenCalled();
+    expect(response.status).toHaveBeenCalledWith(401);
+  });
+
+  it("crea un horario usando el tenant autenticado e ignora tenantId del body", async () => {
+    const businessHour = {
+      id: "hour-1",
+      dayOfWeek: 1,
+      startTime: "09:00:00",
+      endTime: "17:00:00"
+    };
+    const configurationService = {
+      createBusinessHour: jest.fn().mockResolvedValue(businessHour)
+    };
+    const controller = new ConfigurationController(configurationService);
+    const response = createResponseMock();
+
+    await controller.createBusinessHour({
+      authenticatedUser: { id: "user-1", tenantId: "tenant-1", role: "ADMIN" },
+      body: {
+        tenantId: "tenant-otro",
+        dayOfWeek: 1,
+        startTime: "09:00",
+        endTime: "17:00"
+      }
+    } as never, response as never);
+
+    expect(configurationService.createBusinessHour).toHaveBeenCalledWith({
+      tenantId: "tenant-1",
+      dayOfWeek: 1,
+      startTime: "09:00",
+      endTime: "17:00"
+    });
+    expect(response.status).toHaveBeenCalledWith(201);
+  });
+
+  it("rechaza crear un horario inválido", async () => {
+    const configurationService = { createBusinessHour: jest.fn() };
+    const controller = new ConfigurationController(configurationService);
+    const response = createResponseMock();
+
+    await controller.createBusinessHour({
+      authenticatedUser: { id: "user-1", tenantId: "tenant-1", role: "ADMIN" },
+      body: { dayOfWeek: 1, startTime: "17:00", endTime: "09:00" }
+    } as never, response as never);
+
+    expect(configurationService.createBusinessHour).not.toHaveBeenCalled();
+    expect(response.status).toHaveBeenCalledWith(400);
+  });
+});
