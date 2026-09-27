@@ -1,6 +1,10 @@
 import { Request, Response } from "express";
 import { ConfigurationService } from "./configuration.service.js";
-import { createServiceRequestSchema } from "./configuration.validation.js";
+import {
+  createEmployeeRequestSchema,
+  createServiceRequestSchema,
+  updateEmployeeStatusRequestSchema
+} from "./configuration.validation.js";
 
 export class ConfigurationController {
   constructor(
@@ -85,4 +89,114 @@ export class ConfigurationController {
       throw error;
     }
   };
+  listEmployees = async (req: Request, res: Response): Promise<void> => {
+    const tenantId = req.authenticatedUser?.tenantId;
+
+    if (!tenantId) {
+      res.status(401).json({
+        error: {
+          code: "AUTHENTICATION_REQUIRED",
+          message: "Se requiere autenticación."
+        }
+      });
+      return;
+    }
+
+    const employees = await this.configurationService.listEmployees(tenantId);
+
+    res.status(200).json(
+      employees.map((employee) => ({
+        id: employee.id,
+        name: employee.name,
+        status: employee.status
+      }))
+    );
+  };
+
+  createEmployee = async (req: Request, res: Response): Promise<void> => {
+    const tenantId = req.authenticatedUser?.tenantId;
+
+    if (!tenantId) {
+      res.status(401).json({
+        error: {
+          code: "AUTHENTICATION_REQUIRED",
+          message: "Se requiere autenticación."
+        }
+      });
+      return;
+    }
+
+    const result = createEmployeeRequestSchema.safeParse(req.body ?? {});
+
+    if (!result.success) {
+      res.status(400).json({
+        error: {
+          code: "INVALID_REQUEST",
+          message: "Los datos del profesional no son válidos."
+        }
+      });
+      return;
+    }
+
+    const employee = await this.configurationService.createEmployee({
+      tenantId,
+      name: result.data.name
+    });
+
+    res.status(201).json({
+      id: employee.id,
+      name: employee.name,
+      status: employee.status
+    });
+  };
+
+  updateEmployeeStatus = async (req: Request, res: Response): Promise<void> => {
+    const tenantId = req.authenticatedUser?.tenantId;
+
+    if (!tenantId) {
+      res.status(401).json({
+        error: {
+          code: "AUTHENTICATION_REQUIRED",
+          message: "Se requiere autenticación."
+        }
+      });
+      return;
+    }
+
+    const result = updateEmployeeStatusRequestSchema.safeParse(req.body ?? {});
+
+    if (!result.success || typeof req.params.id !== "string") {
+      res.status(400).json({
+        error: {
+          code: "INVALID_REQUEST",
+          message: "Los datos del estado del profesional no son válidos."
+        }
+      });
+      return;
+    }
+
+    const employee = await this.configurationService.updateEmployeeStatus({
+      tenantId,
+      employeeId: req.params.id,
+      status: result.data.status
+    });
+
+    if (!employee) {
+      res.status(404).json({
+        error: {
+          code: "PROFESSIONAL_NOT_FOUND",
+          message: "El profesional no existe."
+        }
+      });
+      return;
+    }
+
+    res.status(200).json({
+      id: employee.id,
+      name: employee.name,
+      status: employee.status
+    });
+  };
+
 }
+
