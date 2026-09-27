@@ -19,5 +19,23 @@ export const createConfigurationRouter = (
     configurationController.createService
   );
 
+  router.get(
+    "/professionals",
+    requireAuthentication(),
+    configurationController.listEmployees
+  );
+
+  router.post(
+    "/professionals",
+    requireAuthentication(),
+    configurationController.createEmployee
+  );
+
+  router.patch(
+    "/professionals/:id/status",
+    requireAuthentication(),
+    configurationController.updateEmployeeStatus
+  );
+
   return router;
 };
