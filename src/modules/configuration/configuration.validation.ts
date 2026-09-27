@@ -3,10 +3,11 @@ import {
   CreateBusinessHourInput,
   CreateBlockedTimeInput,
   CreateEmployeeInput,
-  CreateServiceInput
+  CreateServiceInput,
+  UpdateEmployeeStatusInput
 } from "./configuration.types.js";
 
-const TIME_PATTERN = /^([01]\\d|2[0-3]):[0-5]\\d$/;
+const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 const serviceFieldsSchema = z.object({
   name: z.string().trim().min(1),
@@ -20,9 +21,23 @@ const serviceInputSchema = serviceFieldsSchema.extend({
   tenantId: z.string().min(1)
 });
 
-const employeeInputSchema = z.object({
+const employeeFieldsSchema = z.object({
+  name: z.string().trim().min(1).max(120)
+});
+
+const employeeInputSchema = employeeFieldsSchema.extend({
+  tenantId: z.string().min(1)
+});
+
+export const createEmployeeRequestSchema = employeeFieldsSchema;
+
+export const updateEmployeeStatusRequestSchema = z.object({
+  status: z.enum(["active", "inactive"])
+});
+
+const employeeStatusInputSchema = updateEmployeeStatusRequestSchema.extend({
   tenantId: z.string().min(1),
-  name: z.string().trim().min(1)
+  employeeId: z.string().min(1)
 });
 
 const businessHourInputSchema = z.object({
@@ -49,6 +64,10 @@ export function validateServiceInput(input: CreateServiceInput): void {
 
 export function validateEmployeeInput(input: CreateEmployeeInput): void {
   employeeInputSchema.parse(input);
+}
+
+export function validateEmployeeStatusInput(input: UpdateEmployeeStatusInput): void {
+  employeeStatusInputSchema.parse(input);
 }
 
 export function validateBusinessHourInput(input: CreateBusinessHourInput): void {
