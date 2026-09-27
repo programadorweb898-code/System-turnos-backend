@@ -37,5 +37,17 @@ export const createConfigurationRouter = (
     configurationController.updateEmployeeStatus
   );
 
+  router.get(
+    "/business-hours",
+    requireAuthentication(),
+    configurationController.listBusinessHours
+  );
+
+  router.post(
+    "/business-hours",
+    requireAuthentication(),
+    configurationController.createBusinessHour
+  );
+
   return router;
 };
