@@ -59,6 +59,31 @@ describe("TenantService", () => {
     expect(repository.create).not.toHaveBeenCalled();
   });
 
+  it("obtiene un tenant por id", async () => {
+    const repository = createRepositoryMock();
+    const tenant = { id: "tenant-1" } as Tenant;
+
+    repository.findById.mockResolvedValue(tenant);
+
+    const service = new TenantService(repository);
+
+    const result = await service.getById("tenant-1");
+
+    expect(repository.findById).toHaveBeenCalledWith("tenant-1");
+    expect(result).toBe(tenant);
+  });
+
+  it("rechaza obtener un tenant inexistente", async () => {
+    const repository = createRepositoryMock();
+    repository.findById.mockResolvedValue(null);
+
+    const service = new TenantService(repository);
+
+    await expect(service.getById("tenant-no-existe")).rejects.toThrow(
+      "El negocio no existe."
+    );
+  });
+
   it("actualiza las reglas configurables del tenant", async () => {
     const repository = createRepositoryMock();
     const tenant = {
