@@ -1,4 +1,4 @@
-import { DataSource, EntityManager, Repository } from "typeorm";
+import { DataSource, EntityManager } from "typeorm";
 import { AppDataSource } from "../../database/data-source.js";
 import { Appointment } from "../../database/entities/appointment.entity.js";
 import { BlockedTime } from "../../database/entities/blocked-time.entity.js";
@@ -9,6 +9,7 @@ import { Service } from "../../database/entities/service.entity.js";
 import { Tenant } from "../../database/entities/tenant.entity.js";
 
 export class AppointmentDailyLimitError extends Error {}
+export class AppointmentProfessionalBlockedError extends Error {}
 
 export interface AppointmentCreationContext {
   tenant: Tenant;
@@ -16,17 +17,14 @@ export interface AppointmentCreationContext {
   professionals: Employee[];
   businessHours: BusinessHour[];
   blocked: boolean;
+  blockedProfessionalIds: string[];
   dailyAppointments: number;
 }
 
 export class AppointmentRepository {
   constructor(private readonly dataSource: DataSource = AppDataSource) {}
 
-  async getCreationContext(
-    tenantId: string,
-    serviceId: string,
-    startAt: Date
-  ): Promise<AppointmentCreationContext | null> {
+  async getCreationContext(tenantId: string, serviceId: string, startAt: Date): Promise<AppointmentCreationContext | null> {
     const tenantRepository = this.dataSource.getRepository(Tenant);
     const serviceRepository = this.dataSource.getRepository(Service);
     const businessHourRepository = this.dataSource.getRepository(BusinessHour);
@@ -35,14 +33,10 @@ export class AppointmentRepository {
     const tenant = await tenantRepository.findOne({ where: { id: tenantId } });
     if (!tenant) return null;
 
-    const service = await serviceRepository.findOne({
-      where: { id: serviceId, tenantId, status: "active" }
-    });
+    const service = await serviceRepository.findOne({ where: { id: serviceId, tenantId, status: "active" } });
     if (!service) return null;
 
-    const endAt = new Date(
-      startAt.getTime() + service.duration * 60_000
-    );
+    const endAt = new Date(startAt.getTime() + service.duration * 60_000);
 
     const businessHours = await businessHourRepository.find({
       where: { tenantId },
@@ -52,27 +46,17 @@ export class AppointmentRepository {
     const blocked = await blockedTimeRepository
       .createQueryBuilder("blocked")
       .where("blocked.tenant_id = :tenantId", { tenantId })
+      .andWhere("blocked.professional_id IS NULL")
       .andWhere("blocked.starts_at < :endAt", { endAt })
       .andWhere("blocked.ends_at > :startAt", { startAt })
       .getExists();
 
-    const dailyAppointments = await this.countAppointmentsForLocalDate(
-      this.dataSource.manager,
-      tenantId,
-      startAt,
-      tenant.timezone
-    );
+    const dailyAppointments = await this.countAppointmentsForLocalDate(this.dataSource.manager, tenantId, startAt, tenant.timezone);
 
-    const professionalServiceRepository =
-      this.dataSource.getRepository(ProfessionalService);
-
-    const assignments = await professionalServiceRepository
+    const assignments = await this.dataSource
+      .getRepository(ProfessionalService)
       .createQueryBuilder("assignment")
-      .innerJoinAndSelect(
-        Employee,
-        "professional",
-        "professional.id = assignment.professional_id"
-      )
+      .innerJoinAndSelect(Employee, "professional", "professional.id = assignment.professional_id")
       .where("assignment.tenant_id = :tenantId", { tenantId })
       .andWhere("assignment.service_id = :serviceId", { serviceId })
       .andWhere("professional.tenant_id = :tenantId", { tenantId })
@@ -88,66 +72,62 @@ export class AppointmentRepository {
       return professional;
     });
 
-    return { tenant, service, professionals, businessHours, blocked, dailyAppointments };
+    const professionalIds = professionals.map((professional) => professional.id);
+    const blockedProfessionalIds = professionalIds.length
+      ? await blockedTimeRepository
+          .createQueryBuilder("blocked")
+          .select("blocked.professional_id", "professional_id")
+          .where("blocked.tenant_id = :tenantId", { tenantId })
+          .andWhere("blocked.professional_id IN (:...professionalIds)", { professionalIds })
+          .andWhere("blocked.starts_at < :endAt", { endAt })
+          .andWhere("blocked.ends_at > :startAt", { startAt })
+          .getRawMany<{ professional_id: string }>()
+          .then((rows) => [...new Set(rows.map((row) => row.professional_id))])
+      : [];
+
+    return { tenant, service, professionals, businessHours, blocked, blockedProfessionalIds, dailyAppointments };
   }
 
-  async create(
-    input: {
-      tenantId: string;
-      customerName: string;
-      customerPhone: string;
-      customerNotes: string | null;
-      serviceId: string;
-      professionalId: string;
-      startAt: Date;
-      endAt: Date;
-      timezone: string;
-      maxDailyAppointments: number;
-    }
-  ): Promise<Appointment> {
+  async create(input: {
+    tenantId: string; customerName: string; customerPhone: string; customerNotes: string | null;
+    serviceId: string; professionalId: string; startAt: Date; endAt: Date; timezone: string;
+    maxDailyAppointments: number;
+  }): Promise<Appointment> {
     return this.dataSource.transaction(async (manager) => {
       const repository = manager.getRepository(Appointment);
-      await manager.query(
-        "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))",
-        [this.getDailyLimitLockKey(input.tenantId, input.startAt, input.timezone)]
-      );
 
-      const dailyAppointments = await this.countAppointmentsForLocalDate(
-        manager,
-        input.tenantId,
-        input.startAt,
-        input.timezone
-      );
+      await manager.query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [
+        this.getDailyLimitLockKey(input.tenantId, input.startAt, input.timezone)
+      ]);
 
+      const dailyAppointments = await this.countAppointmentsForLocalDate(manager, input.tenantId, input.startAt, input.timezone);
       if (dailyAppointments >= input.maxDailyAppointments) {
-        throw new AppointmentDailyLimitError(
-          "El negocio alcanzó el límite diario de turnos."
-        );
+        throw new AppointmentDailyLimitError("El negocio alcanzó el límite diario de turnos.");
       }
 
-      const appointment = repository.create({
-        tenantId: input.tenantId,
-        customerName: input.customerName,
-        customerPhone: input.customerPhone,
-        customerNotes: input.customerNotes,
-        serviceId: input.serviceId,
-        professionalId: input.professionalId,
-        startAt: input.startAt,
-        endAt: input.endAt,
-        status: "CONFIRMED"
-      });
+      const professionalBlocked = await manager
+        .getRepository(BlockedTime)
+        .createQueryBuilder("blocked")
+        .where("blocked.tenant_id = :tenantId", { tenantId: input.tenantId })
+        .andWhere("blocked.professional_id = :professionalId", { professionalId: input.professionalId })
+        .andWhere("blocked.starts_at < :endAt", { endAt: input.endAt })
+        .andWhere("blocked.ends_at > :startAt", { startAt: input.startAt })
+        .getExists();
 
-      return repository.save(appointment);
+      if (professionalBlocked) {
+        throw new AppointmentProfessionalBlockedError("El profesional está bloqueado en el horario seleccionado.");
+      }
+
+      return repository.save(repository.create({
+        tenantId: input.tenantId, customerName: input.customerName, customerPhone: input.customerPhone,
+        customerNotes: input.customerNotes, serviceId: input.serviceId, professionalId: input.professionalId,
+        startAt: input.startAt, endAt: input.endAt, status: "CONFIRMED"
+      }));
     });
   }
 
-  async professionalHasConflict(
-    professionalId: string,
-    startAt: Date,
-    endAt: Date
-  ): Promise<boolean> {
-    return this.dataSource
-      .getRepository(Appointment)
+  async professionalHasConflict(professionalId: string, startAt: Date, endAt: Date): Promise<boolean> {
+    return this.dataSource.getRepository(Appointment)
       .createQueryBuilder("appointment")
       .where("appointment.professional_id = :professionalId", { professionalId })
       .andWhere("appointment.status IN ('PENDING', 'CONFIRMED')")
@@ -156,46 +136,25 @@ export class AppointmentRepository {
       .getExists();
   }
 
-  private countAppointmentsForLocalDate(
-    manager: EntityManager,
-    tenantId: string,
-    instant: Date,
-    timezone: string
-  ): Promise<number> {
-    return manager
-      .getRepository(Appointment)
+  private countAppointmentsForLocalDate(manager: EntityManager, tenantId: string, instant: Date, timezone: string): Promise<number> {
+    return manager.getRepository(Appointment)
       .createQueryBuilder("appointment")
       .where("appointment.tenant_id = :tenantId", { tenantId })
       .andWhere("appointment.status IN ('PENDING', 'CONFIRMED')")
-      .andWhere(
-        "appointment.start_at >= (date_trunc('day', :instant::timestamptz AT TIME ZONE :timezone) AT TIME ZONE :timezone)",
-        { instant, timezone }
-      )
-      .andWhere(
-        "appointment.start_at < ((date_trunc('day', :instant::timestamptz AT TIME ZONE :timezone) + interval '1 day') AT TIME ZONE :timezone)",
-        { instant, timezone }
-      )
+      .andWhere("appointment.start_at >= (date_trunc('day', :instant::timestamptz AT TIME ZONE :timezone) AT TIME ZONE :timezone)", { instant, timezone })
+      .andWhere("appointment.start_at < ((date_trunc('day', :instant::timestamptz AT TIME ZONE :timezone) + interval '1 day') AT TIME ZONE :timezone)", { instant, timezone })
       .getCount();
   }
 
-  private getDailyLimitLockKey(
-    tenantId: string,
-    instant: Date,
-    timezone: string
-  ): string {
+  private getDailyLimitLockKey(tenantId: string, instant: Date, timezone: string): string {
     const parts = new Intl.DateTimeFormat("en-CA", {
-      timeZone: timezone,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit"
+      timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit"
     }).formatToParts(instant);
 
     const values = Object.fromEntries(
-      parts
-        .filter((part) => part.type !== "literal")
-        .map((part) => [part.type, part.value])
+      parts.filter((part) => part.type !== "literal").map((part) => [part.type, part.value])
     );
 
-    return `${tenantId}:${values.year}-${values.month}-${values.day}`;
+    return tenantId + ":" + values.year + "-" + values.month + "-" + values.day;
   }
 }

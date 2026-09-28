@@ -25,60 +25,38 @@ export class AvailabilityRepository {
     const tenant = await this.dataSource.getRepository(Tenant).findOne({
       where: { id: tenantId, status: "published" }
     });
-
     return tenant?.timezone ?? null;
   }
 
-  async getContext(
-    tenantId: string,
-    serviceId: string,
-    professionalId: string | undefined,
-    rangeStart: Date,
-    rangeEnd: Date
-  ): Promise<AvailabilityContext | null> {
+  async getContext(tenantId: string, serviceId: string, professionalId: string | undefined, rangeStart: Date, rangeEnd: Date): Promise<AvailabilityContext | null> {
     const tenant = await this.dataSource.getRepository(Tenant).findOne({
       where: { id: tenantId, status: "published" }
     });
-
     if (!tenant) return null;
 
     const service = await this.dataSource.getRepository(Service).findOne({
       where: { id: serviceId, tenantId, status: "active" }
     });
-
     if (!service) return null;
 
-    const businessHours = await this.dataSource
-      .getRepository(BusinessHour)
-      .find({
-        where: { tenantId },
-        order: { dayOfWeek: "ASC", startTime: "ASC" }
-      });
+    const businessHours = await this.dataSource.getRepository(BusinessHour).find({
+      where: { tenantId },
+      order: { dayOfWeek: "ASC", startTime: "ASC" }
+    });
 
-    const assignmentQuery = this.dataSource
-      .getRepository(ProfessionalService)
+    const assignmentQuery = this.dataSource.getRepository(ProfessionalService)
       .createQueryBuilder("assignment")
-      .innerJoinAndSelect(
-        Employee,
-        "professional",
-        "professional.id = assignment.professional_id"
-      )
+      .innerJoinAndSelect(Employee, "professional", "professional.id = assignment.professional_id")
       .where("assignment.tenant_id = :tenantId", { tenantId })
       .andWhere("assignment.service_id = :serviceId", { serviceId })
       .andWhere("professional.tenant_id = :tenantId", { tenantId })
       .andWhere("professional.status = 'active'");
 
     if (professionalId) {
-      assignmentQuery.andWhere(
-        "professional.id = :professionalId",
-        { professionalId }
-      );
+      assignmentQuery.andWhere("professional.id = :professionalId", { professionalId });
     }
 
-    const assignments = await assignmentQuery.getRawMany<{
-      professional_id: string;
-      professional_name: string;
-    }>();
+    const assignments = await assignmentQuery.getRawMany<{ professional_id: string; professional_name: string }>();
 
     const professionals = assignments.map((row) => {
       const professional = new Employee();
@@ -89,31 +67,37 @@ export class AvailabilityRepository {
       return professional;
     });
 
-    const appointments = professionals.length
-      ? await this.dataSource
-          .getRepository(Appointment)
+    const professionalIds = professionals.map((item) => item.id);
+
+    const appointments = professionalIds.length
+      ? await this.dataSource.getRepository(Appointment)
           .createQueryBuilder("appointment")
           .where("appointment.tenant_id = :tenantId", { tenantId })
-          .andWhere(
-            "appointment.professional_id IN (:...professionalIds)",
-            { professionalIds: professionals.map((item) => item.id) }
-          )
+          .andWhere("appointment.professional_id IN (:...professionalIds)", { professionalIds })
           .andWhere("appointment.status IN ('PENDING', 'CONFIRMED')")
           .andWhere("appointment.start_at < :rangeEnd", { rangeEnd })
           .andWhere("appointment.end_at > :rangeStart", { rangeStart })
           .getMany()
       : [];
 
-    const blockedTimes = await this.dataSource
-      .getRepository(BlockedTime)
+    const blockedQuery = this.dataSource.getRepository(BlockedTime)
       .createQueryBuilder("blocked")
       .where("blocked.tenant_id = :tenantId", { tenantId })
       .andWhere("blocked.starts_at < :rangeEnd", { rangeEnd })
-      .andWhere("blocked.ends_at > :rangeStart", { rangeStart })
-      .getMany();
+      .andWhere("blocked.ends_at > :rangeStart", { rangeStart });
 
-    const dailyAppointments = await this.dataSource
-      .getRepository(Appointment)
+    if (professionalIds.length) {
+      blockedQuery.andWhere(
+        "(blocked.professional_id IS NULL OR blocked.professional_id IN (:...professionalIds))",
+        { professionalIds }
+      );
+    } else {
+      blockedQuery.andWhere("blocked.professional_id IS NULL");
+    }
+
+    const blockedTimes = await blockedQuery.getMany();
+
+    const dailyAppointments = await this.dataSource.getRepository(Appointment)
       .createQueryBuilder("appointment")
       .where("appointment.tenant_id = :tenantId", { tenantId })
       .andWhere("appointment.status IN ('PENDING', 'CONFIRMED')")
@@ -121,14 +105,6 @@ export class AvailabilityRepository {
       .andWhere("appointment.start_at < :rangeEnd", { rangeEnd })
       .getCount();
 
-    return {
-      tenant,
-      service,
-      businessHours,
-      professionals,
-      appointments,
-      blockedTimes,
-      dailyAppointments
-    };
+    return { tenant, service, businessHours, professionals, appointments, blockedTimes, dailyAppointments };
   }
 }

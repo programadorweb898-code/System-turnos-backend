@@ -1,10 +1,4 @@
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn
-} from "typeorm";
+import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 
 @Entity({ name: "blocked_times" })
 export class BlockedTime {
@@ -13,6 +7,9 @@ export class BlockedTime {
 
   @Column({ name: "tenant_id", type: "uuid" })
   tenantId!: string;
+
+  @Column({ name: "professional_id", type: "uuid", nullable: true })
+  professionalId!: string | null;
 
   @Column({ name: "starts_at", type: "timestamptz" })
   startsAt!: Date;

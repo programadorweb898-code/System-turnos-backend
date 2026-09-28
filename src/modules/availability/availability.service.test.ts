@@ -47,4 +47,51 @@ describe("AvailabilityService", () => {
     expect(monday.length).toBeGreaterThan(0);
     expect(tuesday).toEqual([]);
   });
+
+  it("does not return a professional during a professional-specific block", async () => {
+    const repository = {
+      getTenantTimezone: jest.fn().mockResolvedValue("UTC"),
+      getContext: jest.fn().mockResolvedValue({
+        tenant: {
+          id: "tenant-1",
+          timezone: "UTC",
+          status: "published",
+          maxDailyAppointments: 20,
+          minimumBookingNoticeHours: 0
+        },
+        service: {
+          id: "service-1",
+          tenantId: "tenant-1",
+          duration: 30,
+          status: "active"
+        },
+        businessHours: [
+          { tenantId: "tenant-1", dayOfWeek: 1, startTime: "09:00:00", endTime: "10:00:00" }
+        ],
+        professionals: [
+          { id: "professional-1", tenantId: "tenant-1", name: "Profesional", status: "active" }
+        ],
+        appointments: [],
+        blockedTimes: [
+          {
+            professionalId: "professional-1",
+            startsAt: new Date("2099-01-05T09:00:00.000Z"),
+            endsAt: new Date("2099-01-05T10:00:00.000Z")
+          }
+        ],
+        dailyAppointments: 0
+      })
+    } as unknown as ConstructorParameters<typeof AvailabilityService>[0];
+
+    const service = new AvailabilityService(repository);
+
+    const result = await service.getAvailability({
+      tenantId: "tenant-1",
+      serviceId: "service-1",
+      date: "2099-01-05",
+      professionalId: "professional-1"
+    });
+
+    expect(result).toEqual([]);
+  });
 });
