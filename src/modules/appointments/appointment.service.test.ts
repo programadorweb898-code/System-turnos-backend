@@ -20,14 +20,14 @@ function createRepositoryMock() {
 
 function createContext() {
   const professional = new Employee();
-  professional.id = "professional-1";
-  professional.tenantId = "tenant-1";
+  professional.id = "00000000-0000-4000-8000-000000000003";
+  professional.tenantId = "00000000-0000-4000-8000-000000000001";
   professional.name = "Juan";
   professional.status = "active";
 
   return {
     tenant: {
-      id: "tenant-1",
+      id: "00000000-0000-4000-8000-000000000001",
       name: "Peluquería",
       slug: "peluqueria",
       timezone: "UTC",
@@ -36,8 +36,8 @@ function createContext() {
       status: "published"
     },
     service: {
-      id: "service-1",
-      tenantId: "tenant-1",
+      id: "00000000-0000-4000-8000-000000000002",
+      tenantId: "00000000-0000-4000-8000-000000000001",
       name: "Corte",
       description: null,
       duration: 30,
@@ -58,12 +58,12 @@ function createContext() {
 
 function createInput(overrides: Record<string, unknown> = {}) {
   return {
-    tenantId: "tenant-1",
+    tenantId: "00000000-0000-4000-8000-000000000001",
     customerName: "Luis",
     customerPhone: "1122334455",
     serviceId: "11111111-1111-4111-8111-111111111111",
     startAt: new Date("2099-10-01T12:00:00.000Z"),
-    professionalId: "professional-1",
+    professionalId: "00000000-0000-4000-8000-000000000003",
     ...overrides
   };
 }
@@ -74,9 +74,9 @@ describe("AppointmentService.create", () => {
     repository.getCreationContext.mockResolvedValue(createContext() as never);
     repository.professionalHasConflict.mockResolvedValue(false);
     repository.create.mockResolvedValue({
-      id: "appointment-1",
-      serviceId: "service-1",
-      professionalId: "professional-1",
+      id: "00000000-0000-4000-8000-000000000004",
+      serviceId: "00000000-0000-4000-8000-000000000002",
+      professionalId: "00000000-0000-4000-8000-000000000003",
       startAt: new Date("2099-10-01T12:00:00.000Z"),
       endAt: new Date("2099-10-01T12:30:00.000Z"),
       status: "CONFIRMED"
@@ -88,13 +88,13 @@ describe("AppointmentService.create", () => {
 
     expect(repository.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        tenantId: "tenant-1",
-        professionalId: "professional-1",
+        tenantId: "00000000-0000-4000-8000-000000000001",
+        professionalId: "00000000-0000-4000-8000-000000000003",
         startAt: new Date("2099-10-01T12:00:00.000Z"),
         endAt: new Date("2099-10-01T12:30:00.000Z")
       })
     );
-    expect(result.id).toBe("appointment-1");
+    expect(result.id).toBe("00000000-0000-4000-8000-000000000004");
   });
 
   it("rejects a slot outside business hours", async () => {
