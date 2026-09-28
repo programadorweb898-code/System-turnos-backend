@@ -58,6 +58,9 @@ export class WebsiteIntegration {
   @Column({ name: "public_key", unique: true, length: 100 })
   publicKey!: string;
 
+  @Column({ name: "verification_token", length: 128 })
+  verificationToken!: string;
+
   @Column({ name: "verification_status", length: 20, default: "PENDING" })
   verificationStatus!: WebsiteVerificationStatus;
 
