@@ -61,7 +61,7 @@ function createInput(overrides: Record<string, unknown> = {}) {
     tenantId: "00000000-0000-4000-8000-000000000001",
     customerName: "Luis",
     customerPhone: "1122334455",
-    serviceId: "11111111-1111-4111-8111-111111111111",
+    serviceId: "00000000-0000-4000-8000-000000000002",
     startAt: new Date("2099-10-01T12:00:00.000Z"),
     professionalId: "00000000-0000-4000-8000-000000000003",
     ...overrides
