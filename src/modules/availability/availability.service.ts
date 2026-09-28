@@ -11,9 +11,17 @@ export class AvailabilityService {
 
   async getAvailability(input: AvailabilityQuery): Promise<AvailabilitySlot[]> {
     const { date } = this.parseDate(input.date);
+    const timezone = await this.repository.getTenantTimezone(input.tenantId);
+
+    if (!timezone) {
+      throw new AvailabilityUnavailableError(
+        "El negocio no está disponible."
+      );
+    }
+
     const rangeStart = this.zonedTimeToUtc(
       `${input.date}T00:00:00`,
-      input.tenantId
+      timezone
     );
 
     const context = await this.repository.getContext(
