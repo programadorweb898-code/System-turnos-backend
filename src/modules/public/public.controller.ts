@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { ZodError } from "zod";
 import {
   AvailabilityUnavailableError
 } from "../availability/availability.service.js";
@@ -133,12 +134,17 @@ export class PublicController {
         return;
       }
 
-      res.status(400).json({
-        error: {
-          code: "INVALID_REQUEST",
-          message: "Los parámetros de disponibilidad no son válidos."
-        }
-      });
+      if (error instanceof ZodError) {
+        res.status(400).json({
+          error: {
+            code: "INVALID_REQUEST",
+            message: "Los parámetros de disponibilidad no son válidos."
+          }
+        });
+        return;
+      }
+
+      throw error;
     }
   };
 }
