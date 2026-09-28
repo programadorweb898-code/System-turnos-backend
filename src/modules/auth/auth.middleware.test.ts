@@ -124,4 +124,20 @@ describe("requireAuthentication", () => {
     expect(res.status).toHaveBeenCalledWith(403);
     expect(next).not.toHaveBeenCalled();
   });
+
+  it("rechaza un JWT firmado con un algoritmo distinto a HS256", async () => {
+    const repository = createUserRepositoryMock();
+    repository.findById.mockResolvedValue({
+      id: "user-1", tenantId: "tenant-1", role: "ADMIN", status: "ACTIVE"
+    });
+    const middleware = requireAuthentication(repository as unknown as UserRepository);
+    const token = jwt.sign({ sub: "user-1" }, jwtSecret, { algorithm: "HS384" });
+    const req = { header: jest.fn().mockReturnValue(`Bearer ${token}`) } as never;
+    const res = createResponseMock();
+    const next = jest.fn();
+    await middleware(req, res as never, next);
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(repository.findById).not.toHaveBeenCalled();
+    expect(next).not.toHaveBeenCalled();
+  });
 });

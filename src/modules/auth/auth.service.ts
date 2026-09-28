@@ -43,7 +43,7 @@ export class AuthService {
     const accessToken = jwt.sign(
       { sub: user.id },
       this.jwtSecret,
-      { expiresIn: JWT_EXPIRES_IN }
+      { expiresIn: JWT_EXPIRES_IN, algorithm: "HS256" }
     );
 
     return {

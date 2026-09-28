@@ -49,6 +49,8 @@ describe("AuthService", () => {
     const payload = jwt.verify(result.accessToken, jwtSecret) as jwt.JwtPayload;
 
     expect(payload.sub).toBe("user-1");
+    const decoded = jwt.decode(result.accessToken, { complete: true }) as jwt.Jwt;
+    expect(decoded.header.alg).toBe("HS256");
   });
 
   it("rechaza credenciales incorrectas", async () => {
