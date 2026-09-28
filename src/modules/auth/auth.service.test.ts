@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { User } from "../../database/entities/user.entity.js";
-import { AuthService } from "./auth.service.js";
+import { AuthService, JWT_AUDIENCE, JWT_ISSUER } from "./auth.service.js";
 import { UserRepository } from "./user.repository.js";
 
 describe("AuthService", () => {
@@ -49,6 +49,8 @@ describe("AuthService", () => {
     const payload = jwt.verify(result.accessToken, jwtSecret) as jwt.JwtPayload;
 
     expect(payload.sub).toBe("user-1");
+    expect(payload.iss).toBe(JWT_ISSUER);
+    expect(payload.aud).toBe(JWT_AUDIENCE);
     const decoded = jwt.decode(result.accessToken, { complete: true }) as jwt.Jwt;
     expect(decoded.header.alg).toBe("HS256");
   });
