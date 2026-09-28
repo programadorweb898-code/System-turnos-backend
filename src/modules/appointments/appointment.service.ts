@@ -172,7 +172,7 @@ export class AppointmentService {
   private getLocalParts(date: Date, timezone: string) {
     const parts = new Intl.DateTimeFormat("en-US", {
       timeZone: timezone,
-      weekday: "numeric",
+      weekday: "short",
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
