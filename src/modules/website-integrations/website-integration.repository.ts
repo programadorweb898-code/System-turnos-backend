@@ -45,12 +45,20 @@ export class WebsiteIntegrationRepository {
         .getRepository(WebsiteIntegration)
         .save(integration);
 
-      const origin = manager.getRepository(WebsiteIntegrationOrigin).create({
-        websiteIntegrationId: savedIntegration.id,
-        origin: `https://${domain}`
-      });
+      const originRepository = manager.getRepository(WebsiteIntegrationOrigin);
+      const origins = [
+        `https://${domain}`,
+        `https://www.${domain}`
+      ].filter((origin, index, all) => all.indexOf(origin) === index);
 
-      await manager.getRepository(WebsiteIntegrationOrigin).save(origin);
+      await originRepository.save(
+        origins.map((origin) =>
+          originRepository.create({
+            websiteIntegrationId: savedIntegration.id,
+            origin
+          })
+        )
+      );
 
       return savedIntegration;
     });
