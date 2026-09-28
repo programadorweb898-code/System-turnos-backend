@@ -5,7 +5,7 @@ const uuidSchema = z.string().uuid();
 
 export const availabilityRequestSchema = z.object({
   serviceId: uuidSchema,
-  date: z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   professionalId: uuidSchema.optional()
 });
 
