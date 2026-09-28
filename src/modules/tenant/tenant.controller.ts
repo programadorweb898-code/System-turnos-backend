@@ -1,5 +1,8 @@
 import { Request, Response } from "express";
-import { TenantService } from "./tenant.service.js";
+import {
+  TenantNotFoundError,
+  TenantService
+} from "./tenant.service.js";
 
 export class TenantController {
   constructor(private readonly tenantService = new TenantService()) {}
@@ -30,7 +33,7 @@ export class TenantController {
         minimumBookingNoticeHours: tenant.minimumBookingNoticeHours
       });
     } catch (error) {
-      if (error instanceof Error && error.message === "El negocio no existe.") {
+      if (error instanceof TenantNotFoundError) {
         res.status(404).json({
           error: {
             code: "TENANT_NOT_FOUND",
