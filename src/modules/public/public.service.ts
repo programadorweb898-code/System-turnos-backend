@@ -1,13 +1,16 @@
 import { AvailabilityService } from "../availability/availability.service.js";
 import { parseAvailabilityRequest } from "../availability/availability.validation.js";
 import { PublicRepository } from "./public.repository.js";
+import { AppointmentService } from "../appointments/appointment.service.js";
+import { parseCreateAppointmentRequest } from "../appointments/appointment.validation.js";
 
 export class PublicSiteNotFoundError extends Error {}
 
 export class PublicService {
   constructor(
     private readonly repository = new PublicRepository(),
-    private readonly availabilityService = new AvailabilityService()
+    private readonly availabilityService = new AvailabilityService(),
+    private readonly appointmentService = new AppointmentService()
   ) {}
 
   async getSite(publicKey: string) {
@@ -37,3 +40,14 @@ export class PublicService {
     });
   }
 }
+
+
+  async createAppointment(publicKey: string, input: unknown) {
+    const site = await this.getSite(publicKey);
+    const parsed = parseCreateAppointmentRequest(input);
+
+    return this.appointmentService.create({
+      tenantId: site.tenant_id,
+      ...parsed
+    });
+  }
