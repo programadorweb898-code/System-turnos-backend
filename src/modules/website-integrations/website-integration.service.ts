@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { WebsiteIntegration } from "../../database/entities/website-integration.entity.js";
+import { DnsTxtVerificationProvider, DomainVerificationProvider } from "./domain-verification.js";
 import { WebsiteIntegrationRepository } from "./website-integration.repository.js";
 import {
   CreateWebsiteIntegrationInput
@@ -12,10 +13,13 @@ import {
 export class WebsiteIntegrationAlreadyExistsError extends Error {}
 export class WebsiteIntegrationNotFoundError extends Error {}
 export class WebsiteIntegrationNotVerifiedError extends Error {}
+export class WebsiteIntegrationVerificationFailedError extends Error {}
 
 export class WebsiteIntegrationService {
   constructor(
-    private readonly repository = new WebsiteIntegrationRepository()
+    private readonly repository = new WebsiteIntegrationRepository(),
+    private readonly verificationProvider: DomainVerificationProvider =
+      new DnsTxtVerificationProvider()
   ) {}
 
   async create(input: CreateWebsiteIntegrationInput): Promise<WebsiteIntegration> {
@@ -31,11 +35,13 @@ export class WebsiteIntegrationService {
     }
 
     const publicKey = this.generatePublicKey();
+    const verificationToken = this.generateVerificationToken();
 
     return this.repository.create(
       input.tenantId,
       domain,
       publicKey,
+      verificationToken,
       input.integrationProvider ?? "CUSTOM"
     );
   }
@@ -54,6 +60,43 @@ export class WebsiteIntegrationService {
     }
 
     return integration;
+  }
+
+  async verify(id: string, tenantId: string): Promise<WebsiteIntegration> {
+    const integration = await this.getById(id, tenantId);
+
+    if (integration.verificationStatus === "VERIFIED") {
+      return integration;
+    }
+
+    const verified = await this.verificationProvider.verify(
+      integration.domain,
+      integration.verificationToken
+    );
+
+    if (!verified) {
+      const failed = await this.repository.markVerificationFailed(id, tenantId);
+
+      if (!failed) {
+        throw new WebsiteIntegrationNotFoundError(
+          "La integración del sitio no existe."
+        );
+      }
+
+      throw new WebsiteIntegrationVerificationFailedError(
+        "No se encontró el token de verificación DNS esperado."
+      );
+    }
+
+    const verifiedIntegration = await this.repository.markVerified(id, tenantId);
+
+    if (!verifiedIntegration) {
+      throw new WebsiteIntegrationNotFoundError(
+        "La integración del sitio no existe."
+      );
+    }
+
+    return verifiedIntegration;
   }
 
   async connect(id: string, tenantId: string): Promise<WebsiteIntegration> {
@@ -78,5 +121,9 @@ export class WebsiteIntegrationService {
 
   private generatePublicKey(): string {
     return `pk_live_${randomBytes(24).toString("base64url")}`;
+  }
+
+  private generateVerificationToken(): string {
+    return `turnos-verification=${randomBytes(32).toString("base64url")}`;
   }
 }
