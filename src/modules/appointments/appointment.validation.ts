@@ -22,6 +22,14 @@ const createAppointmentInputSchema = z.object({
   professionalId: uuidSchema.optional()
 });
 
+export function parseCreateAppointmentRequest(input: unknown): Omit<CreateAppointmentInput, "tenantId"> {
+  const parsed = createAppointmentRequestSchema.parse(input);
+  return {
+    ...parsed,
+    startAt: new Date(parsed.startAt)
+  };
+}
+
 export function validateCreateAppointmentInput(input: CreateAppointmentInput): void {
   createAppointmentInputSchema.parse(input);
 }

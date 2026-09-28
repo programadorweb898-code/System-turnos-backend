@@ -2,6 +2,7 @@ import jwt from "jsonwebtoken";
 import { env } from "../../config/env.js";
 import { AuthenticatedUser } from "./auth.types.js";
 import { requireAuthentication } from "./auth.middleware.js";
+import { UserRepository } from "./user.repository.js";
 
 describe("requireAuthentication", () => {
   const jwtSecret = "test-secret";
@@ -32,7 +33,7 @@ describe("requireAuthentication", () => {
       status: "ACTIVE"
     });
 
-    const middleware = requireAuthentication(repository);
+    const middleware = requireAuthentication(repository as unknown as UserRepository);
     const req = {
       header: jest.fn().mockReturnValue(
         `Bearer ${jwt.sign({ sub: "user-1" }, jwtSecret)}`
@@ -54,7 +55,7 @@ describe("requireAuthentication", () => {
 
   it("rechaza una request sin token", async () => {
     const repository = createUserRepositoryMock();
-    const middleware = requireAuthentication(repository);
+    const middleware = requireAuthentication(repository as unknown as UserRepository);
     const req = {
       header: jest.fn().mockReturnValue(undefined)
     } as never;
@@ -69,7 +70,7 @@ describe("requireAuthentication", () => {
 
   it("rechaza un token inválido", async () => {
     const repository = createUserRepositoryMock();
-    const middleware = requireAuthentication(repository);
+    const middleware = requireAuthentication(repository as unknown as UserRepository);
     const req = {
       header: jest.fn().mockReturnValue("Bearer invalid-token")
     } as never;
@@ -87,7 +88,7 @@ describe("requireAuthentication", () => {
     const repository = createUserRepositoryMock();
     repository.findById.mockResolvedValue(null);
 
-    const middleware = requireAuthentication(repository);
+    const middleware = requireAuthentication(repository as unknown as UserRepository);
     const token = jwt.sign({ sub: "deleted-user" }, jwtSecret);
     const req = {
       header: jest.fn().mockReturnValue(`Bearer ${token}`)
@@ -110,7 +111,7 @@ describe("requireAuthentication", () => {
       status: "DISABLED"
     });
 
-    const middleware = requireAuthentication(repository);
+    const middleware = requireAuthentication(repository as unknown as UserRepository);
     const token = jwt.sign({ sub: "user-1" }, jwtSecret);
     const req = {
       header: jest.fn().mockReturnValue(`Bearer ${token}`)

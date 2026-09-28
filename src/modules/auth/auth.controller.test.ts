@@ -1,3 +1,4 @@
+import { AuthService } from "./auth.service.js";
 import { AuthController } from "./auth.controller.js";
 
 describe("AuthController", () => {
@@ -20,7 +21,7 @@ describe("AuthController", () => {
       })
     };
 
-    const controller = new AuthController(authService);
+    const controller = new AuthController(authService as unknown as AuthService);
     const response = createResponseMock();
 
     await controller.login(
@@ -53,7 +54,7 @@ describe("AuthController", () => {
       login: jest.fn()
     };
 
-    const controller = new AuthController(authService);
+    const controller = new AuthController(authService as unknown as AuthService);
     const response = createResponseMock();
 
     await controller.login(
@@ -80,7 +81,7 @@ describe("AuthController", () => {
       login: jest.fn().mockRejectedValue(new Error("Usuario deshabilitado"))
     };
 
-    const controller = new AuthController(authService);
+    const controller = new AuthController(authService as unknown as AuthService);
     const response = createResponseMock();
 
     await controller.login(
@@ -107,7 +108,7 @@ describe("AuthController", () => {
       login: jest.fn().mockRejectedValue(new Error("Credenciales inválidas"))
     };
 
-    const controller = new AuthController(authService);
+    const controller = new AuthController(authService as unknown as AuthService);
     const response = createResponseMock();
 
     await controller.login(

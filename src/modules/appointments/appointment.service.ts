@@ -172,7 +172,7 @@ export class AppointmentService {
   private getLocalParts(date: Date, timezone: string) {
     const parts = new Intl.DateTimeFormat("en-US", {
       timeZone: timezone,
-      weekday: "numeric",
+      weekday: "short",
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
@@ -187,11 +187,21 @@ export class AppointmentService {
         .map((part) => [part.type, Number(part.value)])
     );
 
+    const weekdayMap: Record<string, number> = {
+      Sun: 0,
+      Mon: 1,
+      Tue: 2,
+      Wed: 3,
+      Thu: 4,
+      Fri: 5,
+      Sat: 6
+    };
+
     return {
       year: values.year,
       month: values.month,
       day: values.day,
-      weekday: values.weekday - 1,
+      weekday: weekdayMap[parts.find((part) => part.type === "weekday")?.value ?? ""],
       hour: values.hour,
       minute: values.minute
     };

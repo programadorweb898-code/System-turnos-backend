@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { User } from "../../database/entities/user.entity.js";
 import { AuthService } from "./auth.service.js";
+import { UserRepository } from "./user.repository.js";
 
 describe("AuthService", () => {
   const jwtSecret = "test-secret";
@@ -31,7 +32,7 @@ describe("AuthService", () => {
 
     repository.findByEmail.mockResolvedValue(user);
 
-    const service = new AuthService(repository, jwtSecret);
+    const service = new AuthService(repository as unknown as UserRepository, jwtSecret);
 
     const result = await service.login({
       email: " ADMIN@EXAMPLE.COM ",
@@ -55,7 +56,7 @@ describe("AuthService", () => {
     const passwordHash = await bcrypt.hash("password123", 10);
     repository.findByEmail.mockResolvedValue(createUser({ passwordHash }));
 
-    const service = new AuthService(repository, jwtSecret);
+    const service = new AuthService(repository as unknown as UserRepository, jwtSecret);
 
     await expect(
       service.login({
@@ -69,7 +70,7 @@ describe("AuthService", () => {
     const repository = createUserRepositoryMock();
     repository.findByEmail.mockResolvedValue(null);
 
-    const service = new AuthService(repository, jwtSecret);
+    const service = new AuthService(repository as unknown as UserRepository, jwtSecret);
 
     await expect(
       service.login({
@@ -85,7 +86,7 @@ describe("AuthService", () => {
       createUser({ status: "DISABLED" })
     );
 
-    const service = new AuthService(repository, jwtSecret);
+    const service = new AuthService(repository as unknown as UserRepository, jwtSecret);
 
     await expect(
       service.login({
