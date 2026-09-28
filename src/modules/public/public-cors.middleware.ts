@@ -5,9 +5,16 @@ import { WebsiteIntegrationOrigin } from "../../database/entities/website-integr
 import { WebsiteIntegration } from "../../database/entities/website-integration.entity.js";
 
 export class PublicCorsRepository {
-  constructor(private readonly dataSource: DataSource = AppDataSource) {}
+  constructor(
+    private readonly dataSource: DataSource = AppDataSource,
+    private readonly widgetOrigin = process.env.PUBLIC_WIDGET_ORIGIN ?? ""
+  ) {}
 
   async isAllowedOrigin(publicKey: string, origin: string): Promise<boolean> {
+    if (this.widgetOrigin && origin === this.widgetOrigin) {
+      return this.isActiveIntegration(publicKey);
+    }
+
     const result = await this.dataSource
       .getRepository(WebsiteIntegrationOrigin)
       .createQueryBuilder("origin")
@@ -20,6 +27,18 @@ export class PublicCorsRepository {
       .andWhere("integration.verification_status = 'VERIFIED'")
       .andWhere("integration.integration_status = 'CONNECTED'")
       .andWhere("origin.origin = :origin", { origin })
+      .getOne();
+
+    return Boolean(result);
+  }
+
+  private async isActiveIntegration(publicKey: string): Promise<boolean> {
+    const result = await this.dataSource
+      .getRepository(WebsiteIntegration)
+      .createQueryBuilder("integration")
+      .where("integration.public_key = :publicKey", { publicKey })
+      .andWhere("integration.verification_status = 'VERIFIED'")
+      .andWhere("integration.integration_status = 'CONNECTED'")
       .getOne();
 
     return Boolean(result);
