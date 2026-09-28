@@ -1,6 +1,10 @@
 import { Tenant } from "../../database/entities/tenant.entity.js";
+import {
+  TenantNotFoundError,
+  TenantService,
+  TenantSlugAlreadyExistsError
+} from "./tenant.service.js";
 import { TenantRepository } from "./tenant.repository.js";
-import { TenantService } from "./tenant.service.js";
 
 describe("TenantService", () => {
   const validInput = {
@@ -52,8 +56,8 @@ describe("TenantService", () => {
 
     const service = new TenantService(repository as unknown as TenantRepository);
 
-    await expect(service.create(validInput)).rejects.toThrow(
-      "Ya existe un negocio con ese slug."
+    await expect(service.create(validInput)).rejects.toBeInstanceOf(
+      TenantSlugAlreadyExistsError
     );
 
     expect(repository.create).not.toHaveBeenCalled();
@@ -79,8 +83,8 @@ describe("TenantService", () => {
 
     const service = new TenantService(repository as unknown as TenantRepository);
 
-    await expect(service.getById("tenant-no-existe")).rejects.toThrow(
-      "El negocio no existe."
+    await expect(service.getById("tenant-no-existe")).rejects.toBeInstanceOf(
+      TenantNotFoundError
     );
   });
 
@@ -151,7 +155,7 @@ describe("TenantService", () => {
 
     await expect(
       service.update("tenant-1", { slug: "otro-negocio" })
-    ).rejects.toThrow("Ya existe un negocio con ese slug.");
+    ).rejects.toBeInstanceOf(TenantSlugAlreadyExistsError);
 
     expect(repository.update).not.toHaveBeenCalled();
   });
@@ -164,7 +168,7 @@ describe("TenantService", () => {
 
     await expect(
       service.update("tenant-no-existe", { maxDailyAppointments: 10 })
-    ).rejects.toThrow("El negocio no existe.");
+    ).rejects.toBeInstanceOf(TenantNotFoundError);
 
     expect(repository.update).not.toHaveBeenCalled();
   });
