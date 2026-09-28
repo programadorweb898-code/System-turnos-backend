@@ -10,7 +10,7 @@ export class AvailabilityService {
   ) {}
 
   async getAvailability(input: AvailabilityQuery): Promise<AvailabilitySlot[]> {
-    const { date } = this.parseDate(input.date);
+    const { weekday } = this.parseDate(input.date);
     const timezone = await this.repository.getTenantTimezone(input.tenantId);
 
     if (!timezone) {
@@ -53,7 +53,7 @@ export class AvailabilityService {
     const slots: AvailabilitySlot[] = [];
 
     for (const businessHour of context.businessHours) {
-      if (businessHour.dayOfWeek !== date.weekday) continue;
+      if (businessHour.dayOfWeek !== weekday) continue;
 
       const open = this.zonedTimeToUtc(
         `${input.date}T${businessHour.startTime.slice(0, 5)}:00`,
