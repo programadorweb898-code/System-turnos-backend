@@ -11,12 +11,32 @@ export class AvailabilityController {
   ) {}
 
   getAvailability = async (req: Request, res: Response): Promise<void> => {
-    const parsed = parseAvailabilityRequest({
-      serviceId: req.query.serviceId,
-      date: req.query.date,
-      professionalId: req.query.professionalId
-    });
+    const parsedResult = (() => {
+      try {
+        return {
+          success: true as const,
+          data: parseAvailabilityRequest({
+            serviceId: req.query.serviceId,
+            date: req.query.date,
+            professionalId: req.query.professionalId
+          })
+        };
+      } catch {
+        return { success: false as const };
+      }
+    })();
 
+    if (!parsedResult.success) {
+      res.status(400).json({
+        error: {
+          code: "INVALID_REQUEST",
+          message: "Los parámetros de disponibilidad no son válidos."
+        }
+      });
+      return;
+    }
+
+    const parsed = parsedResult.data;
     const tenantId = req.authenticatedUser?.tenantId;
 
     if (!tenantId) {
