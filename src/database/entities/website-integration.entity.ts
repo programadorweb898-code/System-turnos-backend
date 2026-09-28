@@ -61,16 +61,16 @@ export class WebsiteIntegration {
   @Column({ name: "verification_token", length: 128 })
   verificationToken!: string;
 
-  @Column({ name: "verification_status", length: 20, default: "PENDING" })
+  @Column({ name: "verification_status", type: "varchar", length: 20, default: "PENDING" })
   verificationStatus!: WebsiteVerificationStatus;
 
-  @Column({ name: "verification_method", length: 20, nullable: true })
+  @Column({ name: "verification_method", type: "varchar", length: 20, nullable: true })
   verificationMethod!: WebsiteVerificationMethod | null;
 
-  @Column({ name: "integration_provider", length: 20, default: "CUSTOM" })
+  @Column({ name: "integration_provider", type: "varchar", length: 20, default: "CUSTOM" })
   integrationProvider!: WebsiteIntegrationProvider;
 
-  @Column({ name: "integration_status", length: 20, default: "NOT_CONFIGURED" })
+  @Column({ name: "integration_status", type: "varchar", length: 20, default: "NOT_CONFIGURED" })
   integrationStatus!: WebsiteIntegrationStatus;
 
   @Column({ name: "verified_at", type: "timestamptz", nullable: true })

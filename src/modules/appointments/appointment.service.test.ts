@@ -1,6 +1,9 @@
 import { Employee } from "../../database/entities/employee.entity.js";
 import { Appointment } from "../../database/entities/appointment.entity.js";
-import { AppointmentRepository } from "./appointment.repository.js";
+import {
+  AppointmentDailyLimitError,
+  AppointmentRepository
+} from "./appointment.repository.js";
 import {
   AppointmentConflictError,
   AppointmentService,
@@ -91,7 +94,9 @@ describe("AppointmentService.create", () => {
         tenantId: "00000000-0000-4000-8000-000000000001",
         professionalId: "00000000-0000-4000-8000-000000000003",
         startAt: new Date("2099-10-01T12:00:00.000Z"),
-        endAt: new Date("2099-10-01T12:30:00.000Z")
+        endAt: new Date("2099-10-01T12:30:00.000Z"),
+        timezone: "UTC",
+        maxDailyAppointments: 20
       })
     );
     expect(result.id).toBe("00000000-0000-4000-8000-000000000004");
@@ -142,6 +147,21 @@ describe("AppointmentService.create", () => {
     );
 
     expect(repository.create).not.toHaveBeenCalled();
+  });
+
+  it("maps the daily appointment limit error to an unavailable appointment", async () => {
+    const repository = createRepositoryMock();
+    repository.getCreationContext.mockResolvedValue(createContext() as never);
+    repository.professionalHasConflict.mockResolvedValue(false);
+    repository.create.mockRejectedValue(
+      new AppointmentDailyLimitError()
+    );
+
+    const service = new AppointmentService(repository as unknown as AppointmentRepository);
+
+    await expect(service.create(createInput())).rejects.toBeInstanceOf(
+      AppointmentUnavailableError
+    );
   });
 
   it("maps the PostgreSQL exclusion constraint to an appointment conflict", async () => {

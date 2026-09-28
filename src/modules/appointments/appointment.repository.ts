@@ -8,6 +8,8 @@ import { ProfessionalService } from "../../database/entities/professional-servic
 import { Service } from "../../database/entities/service.entity.js";
 import { Tenant } from "../../database/entities/tenant.entity.js";
 
+export class AppointmentDailyLimitError extends Error {}
+
 export interface AppointmentCreationContext {
   tenant: Tenant;
   service: Service;
@@ -55,6 +57,7 @@ export class AppointmentRepository {
       .getExists();
 
     const dailyAppointments = await this.countAppointmentsForLocalDate(
+      this.dataSource.manager,
       tenantId,
       startAt,
       tenant.timezone
@@ -98,12 +101,39 @@ export class AppointmentRepository {
       professionalId: string;
       startAt: Date;
       endAt: Date;
+      timezone: string;
+      maxDailyAppointments: number;
     }
   ): Promise<Appointment> {
     return this.dataSource.transaction(async (manager) => {
       const repository = manager.getRepository(Appointment);
+      await manager.query(
+        "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))",
+        [this.getDailyLimitLockKey(input.tenantId, input.startAt, input.timezone)]
+      );
+
+      const dailyAppointments = await this.countAppointmentsForLocalDate(
+        manager,
+        input.tenantId,
+        input.startAt,
+        input.timezone
+      );
+
+      if (dailyAppointments >= input.maxDailyAppointments) {
+        throw new AppointmentDailyLimitError(
+          "El negocio alcanzó el límite diario de turnos."
+        );
+      }
+
       const appointment = repository.create({
-        ...input,
+        tenantId: input.tenantId,
+        customerName: input.customerName,
+        customerPhone: input.customerPhone,
+        customerNotes: input.customerNotes,
+        serviceId: input.serviceId,
+        professionalId: input.professionalId,
+        startAt: input.startAt,
+        endAt: input.endAt,
         status: "CONFIRMED"
       });
 
@@ -127,11 +157,12 @@ export class AppointmentRepository {
   }
 
   private countAppointmentsForLocalDate(
+    manager: EntityManager,
     tenantId: string,
     instant: Date,
     timezone: string
   ): Promise<number> {
-    return this.dataSource
+    return manager
       .getRepository(Appointment)
       .createQueryBuilder("appointment")
       .where("appointment.tenant_id = :tenantId", { tenantId })
@@ -145,5 +176,26 @@ export class AppointmentRepository {
         { instant, timezone }
       )
       .getCount();
+  }
+
+  private getDailyLimitLockKey(
+    tenantId: string,
+    instant: Date,
+    timezone: string
+  ): string {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: timezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit"
+    }).formatToParts(instant);
+
+    const values = Object.fromEntries(
+      parts
+        .filter((part) => part.type !== "literal")
+        .map((part) => [part.type, part.value])
+    );
+
+    return `${tenantId}:${values.year}-${values.month}-${values.day}`;
   }
 }

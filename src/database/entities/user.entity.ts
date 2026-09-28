@@ -21,10 +21,10 @@ export class User {
   @Column({ name: "password_hash", length: 255 })
   passwordHash!: string;
 
-  @Column({ length: 20, default: "ADMIN" })
+  @Column({ name: "role", type: "varchar", length: 20, default: "ADMIN" })
   role!: UserRole;
 
-  @Column({ length: 20, default: "ACTIVE" })
+  @Column({ name: "status", type: "varchar", length: 20, default: "ACTIVE" })
   status!: UserStatus;
 
   @ManyToOne(() => Tenant, { nullable: false, onDelete: "RESTRICT" })
