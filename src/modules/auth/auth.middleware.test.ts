@@ -2,6 +2,7 @@ import jwt from "jsonwebtoken";
 import { env } from "../../config/env.js";
 import { AuthenticatedUser } from "./auth.types.js";
 import { requireAuthentication } from "./auth.middleware.js";
+import { JWT_AUDIENCE, JWT_ISSUER } from "./auth.service.js";
 import { UserRepository } from "./user.repository.js";
 
 describe("requireAuthentication", () => {
@@ -36,7 +37,10 @@ describe("requireAuthentication", () => {
     const middleware = requireAuthentication(repository as unknown as UserRepository);
     const req = {
       header: jest.fn().mockReturnValue(
-        `Bearer ${jwt.sign({ sub: "user-1" }, jwtSecret)}`
+        `Bearer ${jwt.sign({ sub: "user-1" }, jwtSecret, {
+          issuer: JWT_ISSUER,
+          audience: JWT_AUDIENCE
+        })}`
       )
     } as never;
     const res = createResponseMock();
@@ -89,7 +93,10 @@ describe("requireAuthentication", () => {
     repository.findById.mockResolvedValue(null);
 
     const middleware = requireAuthentication(repository as unknown as UserRepository);
-    const token = jwt.sign({ sub: "deleted-user" }, jwtSecret);
+    const token = jwt.sign({ sub: "deleted-user" }, jwtSecret, {
+      issuer: JWT_ISSUER,
+      audience: JWT_AUDIENCE
+    });
     const req = {
       header: jest.fn().mockReturnValue(`Bearer ${token}`)
     } as never;
@@ -112,7 +119,10 @@ describe("requireAuthentication", () => {
     });
 
     const middleware = requireAuthentication(repository as unknown as UserRepository);
-    const token = jwt.sign({ sub: "user-1" }, jwtSecret);
+    const token = jwt.sign({ sub: "user-1" }, jwtSecret, {
+      issuer: JWT_ISSUER,
+      audience: JWT_AUDIENCE
+    });
     const req = {
       header: jest.fn().mockReturnValue(`Bearer ${token}`)
     } as never;
@@ -136,6 +146,42 @@ describe("requireAuthentication", () => {
     const res = createResponseMock();
     const next = jest.fn();
     await middleware(req, res as never, next);
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(repository.findById).not.toHaveBeenCalled();
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it("rechaza un JWT con un issuer incorrecto", async () => {
+    const repository = createUserRepositoryMock();
+    const middleware = requireAuthentication(repository as unknown as UserRepository);
+    const token = jwt.sign({ sub: "user-1" }, jwtSecret, {
+      issuer: "otro-servicio",
+      audience: JWT_AUDIENCE
+    });
+    const req = { header: jest.fn().mockReturnValue(`Bearer ${token}`) } as never;
+    const res = createResponseMock();
+    const next = jest.fn();
+
+    await middleware(req, res as never, next);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(repository.findById).not.toHaveBeenCalled();
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it("rechaza un JWT con una audience incorrecta", async () => {
+    const repository = createUserRepositoryMock();
+    const middleware = requireAuthentication(repository as unknown as UserRepository);
+    const token = jwt.sign({ sub: "user-1" }, jwtSecret, {
+      issuer: JWT_ISSUER,
+      audience: "otra-api"
+    });
+    const req = { header: jest.fn().mockReturnValue(`Bearer ${token}`) } as never;
+    const res = createResponseMock();
+    const next = jest.fn();
+
+    await middleware(req, res as never, next);
+
     expect(res.status).toHaveBeenCalledWith(401);
     expect(repository.findById).not.toHaveBeenCalled();
     expect(next).not.toHaveBeenCalled();

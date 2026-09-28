@@ -5,6 +5,8 @@ import { UserRepository } from "./user.repository.js";
 import { AuthenticatedUser, LoginInput, LoginResult } from "./auth.types.js";
 
 const JWT_EXPIRES_IN = "4h";
+export const JWT_ISSUER = "system-turnos-api";
+export const JWT_AUDIENCE = "system-turnos-api";
 
 export class AuthService {
   constructor(
@@ -43,7 +45,12 @@ export class AuthService {
     const accessToken = jwt.sign(
       { sub: user.id },
       this.jwtSecret,
-      { expiresIn: JWT_EXPIRES_IN, algorithm: "HS256" }
+      {
+        expiresIn: JWT_EXPIRES_IN,
+        algorithm: "HS256",
+        issuer: JWT_ISSUER,
+        audience: JWT_AUDIENCE
+      }
     );
 
     return {

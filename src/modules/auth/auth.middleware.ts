@@ -4,6 +4,7 @@ import { env } from "../../config/env.js";
 import { UserRepository } from "./user.repository.js";
 import { AuthenticatedUser } from "./auth.types.js";
 import { USER_ROLES, UserRole } from "./auth.constants.js";
+import { JWT_AUDIENCE, JWT_ISSUER } from "./auth.service.js";
 
 declare global {
   namespace Express {
@@ -52,7 +53,11 @@ export const requireAuthentication = (
     }
 
     try {
-      const payload = jwt.verify(token, env.jwtSecret, { algorithms: ["HS256"] });
+      const payload = jwt.verify(token, env.jwtSecret, {
+        algorithms: ["HS256"],
+        issuer: JWT_ISSUER,
+        audience: JWT_AUDIENCE
+      });
 
       if (
         typeof payload === "string" ||
