@@ -1,5 +1,10 @@
 import { Request, Response } from "express";
-import { WebsiteIntegrationService } from "./website-integration.service.js";
+import {
+  WebsiteIntegrationAlreadyExistsError,
+  WebsiteIntegrationNotFoundError,
+  WebsiteIntegrationNotVerifiedError,
+  WebsiteIntegrationService
+} from "./website-integration.service.js";
 import {
   parseCreateWebsiteIntegrationRequest
 } from "./website-integration.validation.js";
@@ -71,7 +76,7 @@ export class WebsiteIntegrationController {
         updatedAt: integration.updatedAt
       });
     } catch (error) {
-      if (error instanceof Error && error.constructor.name === "WebsiteIntegrationNotFoundError") {
+      if (error instanceof WebsiteIntegrationNotFoundError) {
         res.status(404).json({
           error: {
             code: "WEBSITE_INTEGRATION_NOT_FOUND",
@@ -128,7 +133,7 @@ export class WebsiteIntegrationController {
         integrationStatus: integration.integrationStatus
       });
     } catch (error) {
-      if (error instanceof Error && error.constructor.name === "WebsiteIntegrationAlreadyExistsError") {
+      if (error instanceof WebsiteIntegrationAlreadyExistsError) {
         res.status(409).json({
           error: {
             code: "WEBSITE_INTEGRATION_ALREADY_EXISTS",
@@ -177,7 +182,7 @@ export class WebsiteIntegrationController {
         return;
       }
 
-      if (error instanceof Error && error.constructor.name === "WebsiteIntegrationNotVerifiedError") {
+      if (error instanceof WebsiteIntegrationNotVerifiedError) {
         res.status(409).json({
           error: {
             code: "DOMAIN_NOT_VERIFIED",
