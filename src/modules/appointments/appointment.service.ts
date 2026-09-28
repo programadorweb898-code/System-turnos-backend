@@ -1,6 +1,9 @@
 import { Employee } from "../../database/entities/employee.entity.js";
 import { Appointment } from "../../database/entities/appointment.entity.js";
-import { AppointmentRepository } from "./appointment.repository.js";
+import {
+  AppointmentDailyLimitError,
+  AppointmentRepository
+} from "./appointment.repository.js";
 import { CreateAppointmentInput } from "./appointment.types.js";
 import { validateCreateAppointmentInput } from "./appointment.validation.js";
 
@@ -123,12 +126,20 @@ export class AppointmentService {
         serviceId: input.serviceId,
         professionalId: professional.id,
         startAt,
-        endAt
+        endAt,
+        timezone: context.tenant.timezone,
+        maxDailyAppointments: context.tenant.maxDailyAppointments
       });
     } catch (error) {
       if (this.isExclusionConstraintError(error)) {
         throw new AppointmentConflictError(
           "El horario seleccionado ya no está disponible."
+        );
+      }
+
+      if (error instanceof AppointmentDailyLimitError) {
+        throw new AppointmentUnavailableError(
+          "El negocio alcanzó el límite diario de turnos."
         );
       }
 

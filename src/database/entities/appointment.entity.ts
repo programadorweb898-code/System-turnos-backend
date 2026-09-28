@@ -30,7 +30,7 @@ export class Appointment {
   @Column({ name: "customer_phone", length: 40 })
   customerPhone!: string;
 
-  @Column({ name: "customer_notes", length: 300, nullable: true })
+  @Column({ name: "customer_notes", type: "varchar", length: 300, nullable: true })
   customerNotes!: string | null;
 
   @Column({ name: "service_id", type: "uuid" })
@@ -45,7 +45,7 @@ export class Appointment {
   @Column({ name: "end_at", type: "timestamptz" })
   endAt!: Date;
 
-  @Column({ length: 20, default: "PENDING" })
+  @Column({ name: "status", type: "varchar", length: 20, default: "PENDING" })
   status!: AppointmentStatus;
 
   @CreateDateColumn({ name: "created_at" })

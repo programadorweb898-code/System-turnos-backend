@@ -8,9 +8,9 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/index.js",
-    "typeorm": "typeorm-ts-node-esm",
-    "migration:run": "npm run typeorm -- migration:run -d src/database/data-source.ts",
-    "migration:revert": "npm run typeorm -- migration:revert -d src/database/data-source.ts",
+    "typeorm": "tsx ./node_modules/typeorm/cli.js",
+    "migration:run": "npm run typeorm -- migration:run -d dist/database/data-source.js",
+    "migration:revert": "npm run typeorm -- migration:revert -d dist/database/data-source.js",
     "test": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --runInBand",
     "typecheck": "tsc --noEmit"
   },
