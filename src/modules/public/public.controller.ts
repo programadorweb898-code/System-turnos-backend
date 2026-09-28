@@ -4,6 +4,10 @@ import {
   AvailabilityUnavailableError
 } from "../availability/availability.service.js";
 import {
+  AppointmentConflictError,
+  AppointmentUnavailableError
+} from "../appointments/appointment.service.js";
+import {
   PublicService,
   PublicSiteNotFoundError
 } from "./public.service.js";
@@ -148,3 +152,73 @@ export class PublicController {
     }
   };
 }
+
+
+  createAppointment = async (req: Request, res: Response): Promise<void> => {
+    const publicKey = req.params.publicKey;
+
+    if (typeof publicKey !== "string" || publicKey.length === 0) {
+      res.status(400).json({
+        error: {
+          code: "INVALID_PUBLIC_KEY",
+          message: "La clave pública no es válida."
+        }
+      });
+      return;
+    }
+
+    try {
+      const appointment = await this.service.createAppointment(publicKey, req.body);
+
+      res.status(201).json({
+        id: appointment.id,
+        serviceId: appointment.serviceId,
+        professionalId: appointment.professionalId,
+        startAt: appointment.startAt.toISOString(),
+        endAt: appointment.endAt.toISOString(),
+        status: appointment.status
+      });
+    } catch (error) {
+      if (error instanceof PublicSiteNotFoundError) {
+        res.status(404).json({
+          error: {
+            code: "PUBLIC_SITE_NOT_FOUND",
+            message: "El sitio no está disponible para reservas."
+          }
+        });
+        return;
+      }
+
+      if (error instanceof ZodError) {
+        res.status(400).json({
+          error: {
+            code: "INVALID_REQUEST",
+            message: "Los datos del turno no son válidos."
+          }
+        });
+        return;
+      }
+
+      if (error instanceof AppointmentConflictError) {
+        res.status(409).json({
+          error: {
+            code: "APPOINTMENT_CONFLICT",
+            message: error.message
+          }
+        });
+        return;
+      }
+
+      if (error instanceof AppointmentUnavailableError) {
+        res.status(409).json({
+          error: {
+            code: "APPOINTMENT_UNAVAILABLE",
+            message: error.message
+          }
+        });
+        return;
+      }
+
+      throw error;
+    }
+  };
