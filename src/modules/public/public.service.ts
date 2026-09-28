@@ -39,9 +39,6 @@ export class PublicService {
       ...parsed
     });
   }
-}
-
-
   async createAppointment(publicKey: string, input: unknown) {
     const site = await this.getSite(publicKey);
     const parsed = parseCreateAppointmentRequest(input);
@@ -51,3 +48,4 @@ export class PublicService {
       ...parsed
     });
   }
+}
