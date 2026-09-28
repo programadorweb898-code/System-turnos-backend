@@ -10,6 +10,7 @@ export const createWebsiteIntegrationRouter = (
   router.get("/", requireAuthentication(), controller.list);
   router.post("/", requireAuthentication(), controller.create);
   router.get("/:id", requireAuthentication(), controller.getById);
+  router.post("/:id/verify", requireAuthentication(), controller.verify);
   router.post("/:id/connect", requireAuthentication(), controller.connect);
 
   return router;
