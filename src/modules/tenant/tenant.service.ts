@@ -6,6 +6,20 @@ import {
 } from "./tenant.validation.js";
 import { CreateTenantInput, UpdateTenantInput } from "./tenant.types.js";
 
+export class TenantNotFoundError extends Error {
+  constructor() {
+    super("El negocio no existe.");
+    this.name = "TenantNotFoundError";
+  }
+}
+
+export class TenantSlugAlreadyExistsError extends Error {
+  constructor() {
+    super("Ya existe un negocio con ese slug.");
+    this.name = "TenantSlugAlreadyExistsError";
+  }
+}
+
 export class TenantService {
   constructor(private readonly tenantRepository = new TenantRepository()) {}
 
@@ -14,7 +28,7 @@ export class TenantService {
 
     const existing = await this.tenantRepository.findBySlug(input.slug);
     if (existing) {
-      throw new Error("Ya existe un negocio con ese slug.");
+      throw new TenantSlugAlreadyExistsError();
     }
 
     return this.tenantRepository.create(
@@ -30,7 +44,7 @@ export class TenantService {
     const tenant = await this.tenantRepository.findById(id);
 
     if (!tenant) {
-      throw new Error("El negocio no existe.");
+      throw new TenantNotFoundError();
     }
 
     return tenant;
@@ -41,13 +55,13 @@ export class TenantService {
 
     const tenant = await this.tenantRepository.findById(id);
     if (!tenant) {
-      throw new Error("El negocio no existe.");
+      throw new TenantNotFoundError();
     }
 
     if (input.slug && input.slug !== tenant.slug) {
       const existing = await this.tenantRepository.findBySlug(input.slug);
       if (existing) {
-        throw new Error("Ya existe un negocio con ese slug.");
+        throw new TenantSlugAlreadyExistsError();
       }
     }
 
