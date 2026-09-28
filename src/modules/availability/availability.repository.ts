@@ -21,6 +21,14 @@ export interface AvailabilityContext {
 export class AvailabilityRepository {
   constructor(private readonly dataSource: DataSource = AppDataSource) {}
 
+  async getTenantTimezone(tenantId: string): Promise<string | null> {
+    const tenant = await this.dataSource.getRepository(Tenant).findOne({
+      where: { id: tenantId, status: "published" }
+    });
+
+    return tenant?.timezone ?? null;
+  }
+
   async getContext(
     tenantId: string,
     serviceId: string,
