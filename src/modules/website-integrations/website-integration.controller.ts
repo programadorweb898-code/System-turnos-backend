@@ -35,7 +35,6 @@ export class WebsiteIntegrationController {
         id: integration.id,
         domain: integration.domain,
         publicKey: integration.publicKey,
-        verificationToken: integration.verificationToken,
         verificationStatus: integration.verificationStatus,
         verificationMethod: integration.verificationMethod,
         integrationProvider: integration.integrationProvider,
@@ -68,7 +67,6 @@ export class WebsiteIntegrationController {
         id: integration.id,
         domain: integration.domain,
         publicKey: integration.publicKey,
-        verificationToken: integration.verificationToken,
         verificationStatus: integration.verificationStatus,
         verificationMethod: integration.verificationMethod,
         integrationProvider: integration.integrationProvider,
@@ -130,7 +128,6 @@ export class WebsiteIntegrationController {
         id: integration.id,
         domain: integration.domain,
         publicKey: integration.publicKey,
-        verificationToken: integration.verificationToken,
         verification: {
           method: "DNS",
           recordType: "TXT",
