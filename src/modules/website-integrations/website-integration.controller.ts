@@ -3,7 +3,8 @@ import {
   WebsiteIntegrationAlreadyExistsError,
   WebsiteIntegrationNotFoundError,
   WebsiteIntegrationNotVerifiedError,
-  WebsiteIntegrationService
+  WebsiteIntegrationService,
+  WebsiteIntegrationVerificationFailedError
 } from "./website-integration.service.js";
 import {
   parseCreateWebsiteIntegrationRequest
@@ -34,6 +35,7 @@ export class WebsiteIntegrationController {
         id: integration.id,
         domain: integration.domain,
         publicKey: integration.publicKey,
+        verificationToken: integration.verificationToken,
         verificationStatus: integration.verificationStatus,
         verificationMethod: integration.verificationMethod,
         integrationProvider: integration.integrationProvider,
@@ -66,6 +68,7 @@ export class WebsiteIntegrationController {
         id: integration.id,
         domain: integration.domain,
         publicKey: integration.publicKey,
+        verificationToken: integration.verificationToken,
         verificationStatus: integration.verificationStatus,
         verificationMethod: integration.verificationMethod,
         integrationProvider: integration.integrationProvider,
@@ -127,6 +130,13 @@ export class WebsiteIntegrationController {
         id: integration.id,
         domain: integration.domain,
         publicKey: integration.publicKey,
+        verificationToken: integration.verificationToken,
+        verification: {
+          method: "DNS",
+          recordType: "TXT",
+          host: `_turnos.${integration.domain}`,
+          value: integration.verificationToken
+        },
         verificationStatus: integration.verificationStatus,
         verificationMethod: integration.verificationMethod,
         integrationProvider: integration.integrationProvider,
@@ -138,6 +148,54 @@ export class WebsiteIntegrationController {
           error: {
             code: "WEBSITE_INTEGRATION_ALREADY_EXISTS",
             message: "Ya existe una integración para este dominio."
+          }
+        });
+        return;
+      }
+
+      throw error;
+    }
+  };
+
+  verify = async (req: Request, res: Response): Promise<void> => {
+    const tenantId = req.authenticatedUser?.tenantId;
+
+    if (!tenantId || typeof req.params.id !== "string") {
+      res.status(401).json({
+        error: {
+          code: "AUTHENTICATION_REQUIRED",
+          message: "Se requiere autenticación."
+        }
+      });
+      return;
+    }
+
+    try {
+      const integration = await this.service.verify(req.params.id, tenantId);
+
+      res.status(200).json({
+        id: integration.id,
+        domain: integration.domain,
+        verificationStatus: integration.verificationStatus,
+        verificationMethod: integration.verificationMethod,
+        verifiedAt: integration.verifiedAt
+      });
+    } catch (error) {
+      if (error instanceof WebsiteIntegrationNotFoundError) {
+        res.status(404).json({
+          error: {
+            code: "WEBSITE_INTEGRATION_NOT_FOUND",
+            message: "La integración del sitio no existe."
+          }
+        });
+        return;
+      }
+
+      if (error instanceof WebsiteIntegrationVerificationFailedError) {
+        res.status(409).json({
+          error: {
+            code: "DOMAIN_NOT_VERIFIED",
+            message: "No se encontró el token de verificación DNS esperado."
           }
         });
         return;
@@ -172,7 +230,7 @@ export class WebsiteIntegrationController {
         connectedAt: integration.connectedAt
       });
     } catch (error) {
-      if (error instanceof Error && error.constructor.name === "WebsiteIntegrationNotFoundError") {
+      if (error instanceof WebsiteIntegrationNotFoundError) {
         res.status(404).json({
           error: {
             code: "WEBSITE_INTEGRATION_NOT_FOUND",
