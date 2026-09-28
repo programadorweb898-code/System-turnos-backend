@@ -151,10 +151,8 @@ export class PublicController {
       throw error;
     }
   };
-}
 
-
-  createAppointment = async (req: Request, res: Response): Promise<void> => {
+createAppointment = async (req: Request, res: Response): Promise<void> => {
     const publicKey = req.params.publicKey;
 
     if (typeof publicKey !== "string" || publicKey.length === 0) {
@@ -222,3 +220,4 @@ export class PublicController {
       throw error;
     }
   };
+}
