@@ -29,6 +29,7 @@ export class WebsiteIntegrationRepository {
     tenantId: string,
     domain: string,
     publicKey: string,
+    verificationToken: string,
     integrationProvider: WebsiteIntegration["integrationProvider"]
   ) {
     return this.dataSource.transaction(async (manager) => {
@@ -36,8 +37,10 @@ export class WebsiteIntegrationRepository {
         tenantId,
         domain,
         publicKey,
+        verificationToken,
         integrationProvider,
         verificationStatus: "PENDING",
+        verificationMethod: null,
         integrationStatus: "NOT_CONFIGURED"
       });
 
@@ -62,6 +65,35 @@ export class WebsiteIntegrationRepository {
 
       return savedIntegration;
     });
+  }
+
+  async markVerified(id: string, tenantId: string) {
+    const repository = this.dataSource.getRepository(WebsiteIntegration);
+    const integration = await repository.findOne({
+      where: { id, tenantId }
+    });
+
+    if (!integration) return null;
+
+    integration.verificationStatus = "VERIFIED";
+    integration.verificationMethod = "DNS";
+    integration.verifiedAt = new Date();
+
+    return repository.save(integration);
+  }
+
+  async markVerificationFailed(id: string, tenantId: string) {
+    const repository = this.dataSource.getRepository(WebsiteIntegration);
+    const integration = await repository.findOne({
+      where: { id, tenantId }
+    });
+
+    if (!integration) return null;
+
+    integration.verificationStatus = "FAILED";
+    integration.verificationMethod = "DNS";
+
+    return repository.save(integration);
   }
 
   async connect(id: string, tenantId: string) {
