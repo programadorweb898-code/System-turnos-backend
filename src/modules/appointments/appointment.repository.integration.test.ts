@@ -14,6 +14,10 @@ describe("AppointmentRepository.create", () => {
       [tenantId]
     );
     await AppDataSource.query(
+      "DELETE FROM blocked_times WHERE tenant_id = $1",
+      [tenantId]
+    );
+    await AppDataSource.query(
       "DELETE FROM services WHERE id = $1",
       [serviceId]
     );
@@ -46,6 +50,10 @@ describe("AppointmentRepository.create", () => {
   afterAll(async () => {
     await AppDataSource.query(
       "DELETE FROM appointments WHERE tenant_id = $1",
+      [tenantId]
+    );
+    await AppDataSource.query(
+      "DELETE FROM blocked_times WHERE tenant_id = $1",
       [tenantId]
     );
     await AppDataSource.query(
@@ -107,5 +115,38 @@ describe("AppointmentRepository.create", () => {
     );
 
     expect(Number(count)).toBe(1);
+  });
+
+  it("rejects an appointment when the professional is blocked", async () => {
+    const repository = new AppointmentRepository(AppDataSource);
+    const startAt = new Date("2099-10-02T12:00:00.000Z");
+
+    await AppDataSource.query(
+      `INSERT INTO blocked_times (tenant_id, professional_id, starts_at, ends_at, reason)
+       VALUES ($1, $2, $3, $4, 'Vacation')`,
+      [
+        tenantId,
+        professionalId,
+        startAt,
+        new Date(startAt.getTime() + 60 * 60 * 1000)
+      ]
+    );
+
+    const input = {
+      tenantId,
+      customerName: "Blocked customer",
+      customerPhone: "+5491100000010",
+      customerNotes: null,
+      serviceId,
+      professionalId,
+      startAt: new Date(startAt.getTime() + 15 * 60 * 1000),
+      endAt: new Date(startAt.getTime() + 45 * 60 * 1000),
+      timezone: "UTC",
+      maxDailyAppointments: 1
+    };
+
+    await expect(repository.create(input)).rejects.toMatchObject({
+      message: "El profesional está bloqueado en el horario seleccionado."
+    });
   });
 });

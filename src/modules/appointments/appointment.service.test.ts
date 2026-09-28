@@ -55,6 +55,7 @@ function createContext() {
       }
     ],
     blocked: false,
+    blockedProfessionalIds: [],
     dailyAppointments: 0
   };
 }
@@ -132,6 +133,23 @@ describe("AppointmentService.create", () => {
       AppointmentConflictError
     );
 
+    expect(repository.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects a slot when the selected professional is blocked", async () => {
+    const repository = createRepositoryMock();
+    repository.getCreationContext.mockResolvedValue({
+      ...createContext(),
+      blockedProfessionalIds: ["00000000-0000-4000-8000-000000000003"]
+    } as never);
+
+    const service = new AppointmentService(repository as unknown as AppointmentRepository);
+
+    await expect(service.create(createInput())).rejects.toBeInstanceOf(
+      AppointmentConflictError
+    );
+
+    expect(repository.professionalHasConflict).not.toHaveBeenCalled();
     expect(repository.create).not.toHaveBeenCalled();
   });
 
