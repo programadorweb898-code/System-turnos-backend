@@ -63,33 +63,20 @@ export class ConfigurationController {
       return;
     }
 
-    try {
-      const service = await this.configurationService.createService({
-        tenantId,
-        ...result.data
-      });
+    const service = await this.configurationService.createService({
+      tenantId,
+      ...result.data
+    });
 
-      res.status(201).json({
-        id: service.id,
-        name: service.name,
-        description: service.description,
-        duration: service.duration,
-        status: service.status
-      });
-    } catch (error) {
-      if (error instanceof Error) {
-        res.status(400).json({
-          error: {
-            code: "INVALID_SERVICE",
-            message: error.message
-          }
-        });
-        return;
-      }
-
-      throw error;
-    }
+    res.status(201).json({
+      id: service.id,
+      name: service.name,
+      description: service.description,
+      duration: service.duration,
+      status: service.status
+    });
   };
+
   listEmployees = async (req: Request, res: Response): Promise<void> => {
     const tenantId = req.authenticatedUser?.tenantId;
 
@@ -263,4 +250,3 @@ export class ConfigurationController {
   };
 
 }
-
