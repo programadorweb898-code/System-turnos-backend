@@ -1,4 +1,4 @@
-import { createPublicCorsMiddleware } from "./public-cors.middleware.js";
+import { createPublicCorsMiddleware, PublicCorsRepository } from "./public-cors.middleware.js";
 
 function createResponse() {
   const headers = new Map<string, string>();
@@ -7,7 +7,7 @@ function createResponse() {
     json: jest.fn().mockReturnThis(),
     setHeader: jest.fn((name: string, value: string) => {
       headers.set(name, value);
-      return res;
+      return undefined;
     }),
     vary: jest.fn(),
     end: jest.fn()
@@ -25,7 +25,7 @@ describe("public CORS middleware", () => {
     const { res, headers } = createResponse();
     const next = jest.fn();
 
-    await createPublicCorsMiddleware(repository as never)(
+    await createPublicCorsMiddleware(repository as unknown as PublicCorsRepository)(
       {
         params: { publicKey: "pk_live_test" },
         method: "GET",
@@ -53,7 +53,7 @@ describe("public CORS middleware", () => {
 
     const { res } = createResponse();
 
-    await createPublicCorsMiddleware(repository as never)(
+    await createPublicCorsMiddleware(repository as unknown as PublicCorsRepository)(
       {
         params: { publicKey: "pk_live_test" },
         method: "GET",
@@ -80,7 +80,7 @@ describe("public CORS middleware", () => {
     const { res } = createResponse();
     const next = jest.fn();
 
-    await createPublicCorsMiddleware(repository as never)(
+    await createPublicCorsMiddleware(repository as unknown as PublicCorsRepository)(
       {
         params: { publicKey: "pk_live_test" },
         method: "OPTIONS",
@@ -103,7 +103,7 @@ describe("public CORS middleware", () => {
     const { res } = createResponse();
     const next = jest.fn();
 
-    await createPublicCorsMiddleware(repository as never)(
+    await createPublicCorsMiddleware(repository as unknown as PublicCorsRepository)(
       {
         params: { publicKey: "pk_live_test" },
         method: "GET",

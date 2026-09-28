@@ -3,7 +3,7 @@ import {
   AppointmentConflictError,
   AppointmentUnavailableError
 } from "../appointments/appointment.service.js";
-import { PublicSiteNotFoundError } from "./public.service.js";
+import { PublicService, PublicSiteNotFoundError } from "./public.service.js";
 import { PublicController } from "./public.controller.js";
 
 function createResponseMock() {
@@ -34,7 +34,7 @@ describe("PublicController appointment creation", () => {
       status: "CONFIRMED"
     });
 
-    const controller = new PublicController(service as never);
+    const controller = new PublicController(service as unknown as PublicService);
     const res = createResponseMock();
 
     await controller.createAppointment(
@@ -76,7 +76,7 @@ describe("PublicController appointment creation", () => {
       new PublicSiteNotFoundError("El sitio no está disponible para reservas.")
     );
 
-    const controller = new PublicController(service as never);
+    const controller = new PublicController(service as unknown as PublicService);
     const res = createResponseMock();
 
     await controller.createAppointment(
@@ -100,7 +100,7 @@ describe("PublicController appointment creation", () => {
     const service = createServiceMock();
     service.createAppointment.mockRejectedValue(new ZodError([]));
 
-    const controller = new PublicController(service as never);
+    const controller = new PublicController(service as unknown as PublicService);
     const res = createResponseMock();
 
     await controller.createAppointment(
@@ -126,7 +126,7 @@ describe("PublicController appointment creation", () => {
       new AppointmentConflictError("El horario seleccionado ya no está disponible.")
     );
 
-    const controller = new PublicController(service as never);
+    const controller = new PublicController(service as unknown as PublicService);
     const res = createResponseMock();
 
     await controller.createAppointment(
@@ -152,7 +152,7 @@ describe("PublicController appointment creation", () => {
       new AppointmentUnavailableError("El horario está fuera de servicio.")
     );
 
-    const controller = new PublicController(service as never);
+    const controller = new PublicController(service as unknown as PublicService);
     const res = createResponseMock();
 
     await controller.createAppointment(
@@ -174,7 +174,7 @@ describe("PublicController appointment creation", () => {
 
   it("returns 400 when the public key is missing", async () => {
     const service = createServiceMock();
-    const controller = new PublicController(service as never);
+    const controller = new PublicController(service as unknown as PublicService);
     const res = createResponseMock();
 
     await controller.createAppointment(

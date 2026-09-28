@@ -1,5 +1,6 @@
 import { Tenant } from "../../database/entities/tenant.entity.js";
 import { TenantController } from "./tenant.controller.js";
+import { TenantService } from "./tenant.service.js";
 
 describe("TenantController", () => {
   function createResponseMock() {
@@ -24,7 +25,7 @@ describe("TenantController", () => {
       getById: jest.fn().mockResolvedValue(tenant)
     };
 
-    const controller = new TenantController(tenantService);
+    const controller = new TenantController(tenantService as unknown as TenantService);
     const response = createResponseMock();
 
     await controller.getCurrent(
@@ -56,7 +57,7 @@ describe("TenantController", () => {
       getById: jest.fn()
     };
 
-    const controller = new TenantController(tenantService);
+    const controller = new TenantController(tenantService as unknown as TenantService);
     const response = createResponseMock();
 
     await controller.getCurrent({} as never, response as never);

@@ -1,5 +1,6 @@
 import { Service } from "../../database/entities/service.entity.js";
 import { ConfigurationController } from "./configuration.controller.js";
+import { ConfigurationService } from "./configuration.service.js";
 
 describe("ConfigurationController", () => {
   function createResponseMock() {
@@ -24,7 +25,7 @@ describe("ConfigurationController", () => {
       listServices: jest.fn().mockResolvedValue(services)
     };
 
-    const controller = new ConfigurationController(configurationService);
+    const controller = new ConfigurationController(configurationService as unknown as ConfigurationService);
     const response = createResponseMock();
 
     await controller.listServices(
@@ -56,7 +57,7 @@ describe("ConfigurationController", () => {
       listServices: jest.fn()
     };
 
-    const controller = new ConfigurationController(configurationService);
+    const controller = new ConfigurationController(configurationService as unknown as ConfigurationService);
     const response = createResponseMock();
 
     await controller.listServices({} as never, response as never);
@@ -78,7 +79,7 @@ describe("ConfigurationController", () => {
       createService: jest.fn().mockResolvedValue(service)
     };
 
-    const controller = new ConfigurationController(configurationService);
+    const controller = new ConfigurationController(configurationService as unknown as ConfigurationService);
     const response = createResponseMock();
 
     await controller.createService(
@@ -112,7 +113,7 @@ describe("ConfigurationController", () => {
       createService: jest.fn()
     };
 
-    const controller = new ConfigurationController(configurationService);
+    const controller = new ConfigurationController(configurationService as unknown as ConfigurationService);
     const response = createResponseMock();
 
     await controller.createService(
@@ -146,7 +147,7 @@ describe("ConfigurationController", () => {
       listEmployees: jest.fn().mockResolvedValue(employees)
     };
 
-    const controller = new ConfigurationController(configurationService);
+    const controller = new ConfigurationController(configurationService as unknown as ConfigurationService);
     const response = createResponseMock();
 
     await controller.listEmployees(
@@ -176,7 +177,7 @@ describe("ConfigurationController", () => {
       createEmployee: jest.fn().mockResolvedValue(employee)
     };
 
-    const controller = new ConfigurationController(configurationService);
+    const controller = new ConfigurationController(configurationService as unknown as ConfigurationService);
     const response = createResponseMock();
 
     await controller.createEmployee(
@@ -206,7 +207,7 @@ describe("ConfigurationController", () => {
       createEmployee: jest.fn()
     };
 
-    const controller = new ConfigurationController(configurationService);
+    const controller = new ConfigurationController(configurationService as unknown as ConfigurationService);
     const response = createResponseMock();
 
     await controller.createEmployee(
@@ -236,7 +237,7 @@ describe("ConfigurationController", () => {
       updateEmployeeStatus: jest.fn().mockResolvedValue(employee)
     };
 
-    const controller = new ConfigurationController(configurationService);
+    const controller = new ConfigurationController(configurationService as unknown as ConfigurationService);
     const response = createResponseMock();
 
     await controller.updateEmployeeStatus(
@@ -265,7 +266,7 @@ describe("ConfigurationController", () => {
       updateEmployeeStatus: jest.fn().mockResolvedValue(null)
     };
 
-    const controller = new ConfigurationController(configurationService);
+    const controller = new ConfigurationController(configurationService as unknown as ConfigurationService);
     const response = createResponseMock();
 
     await controller.updateEmployeeStatus(
@@ -289,7 +290,7 @@ describe("ConfigurationController", () => {
       updateEmployeeStatus: jest.fn()
     };
 
-    const controller = new ConfigurationController(configurationService);
+    const controller = new ConfigurationController(configurationService as unknown as ConfigurationService);
     const response = createResponseMock();
 
     await controller.updateEmployeeStatus(
@@ -332,7 +333,7 @@ describe("ConfigurationController - business hours", () => {
     const configurationService = {
       listBusinessHours: jest.fn().mockResolvedValue(businessHours)
     };
-    const controller = new ConfigurationController(configurationService);
+    const controller = new ConfigurationController(configurationService as unknown as ConfigurationService);
     const response = createResponseMock();
 
     await controller.listBusinessHours({
@@ -348,7 +349,7 @@ describe("ConfigurationController - business hours", () => {
 
   it("rechaza listar horarios sin autenticación", async () => {
     const configurationService = { listBusinessHours: jest.fn() };
-    const controller = new ConfigurationController(configurationService);
+    const controller = new ConfigurationController(configurationService as unknown as ConfigurationService);
     const response = createResponseMock();
 
     await controller.listBusinessHours({} as never, response as never);
@@ -367,7 +368,7 @@ describe("ConfigurationController - business hours", () => {
     const configurationService = {
       createBusinessHour: jest.fn().mockResolvedValue(businessHour)
     };
-    const controller = new ConfigurationController(configurationService);
+    const controller = new ConfigurationController(configurationService as unknown as ConfigurationService);
     const response = createResponseMock();
 
     await controller.createBusinessHour({
@@ -391,7 +392,7 @@ describe("ConfigurationController - business hours", () => {
 
   it("rechaza crear un horario inválido", async () => {
     const configurationService = { createBusinessHour: jest.fn() };
-    const controller = new ConfigurationController(configurationService);
+    const controller = new ConfigurationController(configurationService as unknown as ConfigurationService);
     const response = createResponseMock();
 
     await controller.createBusinessHour({

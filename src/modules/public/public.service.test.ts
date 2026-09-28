@@ -1,4 +1,6 @@
 import { PublicRepository } from "./public.repository.js";
+import { AvailabilityService } from "../availability/availability.service.js";
+import { AppointmentService } from "../appointments/appointment.service.js";
 import {
   PublicService,
   PublicSiteNotFoundError
@@ -44,8 +46,8 @@ describe("PublicService availability", () => {
     ]);
 
     const service = new PublicService(
-      repository,
-      availabilityService as never
+      repository as unknown as PublicRepository,
+      availabilityService as unknown as AvailabilityService
     );
 
     const result = await service.getAvailability("pk_live_test", {
@@ -74,8 +76,8 @@ describe("PublicService availability", () => {
     availabilityService.getAvailability.mockResolvedValue([]);
 
     const service = new PublicService(
-      repository,
-      availabilityService as never
+      repository as unknown as PublicRepository,
+      availabilityService as unknown as AvailabilityService
     );
 
     await service.getAvailability("pk_live_test", {
@@ -98,8 +100,8 @@ describe("PublicService availability", () => {
     repository.findPublishedSiteByPublicKey.mockResolvedValue(undefined);
 
     const service = new PublicService(
-      repository,
-      availabilityService as never
+      repository as unknown as PublicRepository,
+      availabilityService as unknown as AvailabilityService
     );
 
     await expect(
@@ -121,8 +123,8 @@ describe("PublicService availability", () => {
     } as never);
 
     const service = new PublicService(
-      repository,
-      availabilityService as never
+      repository as unknown as PublicRepository,
+      availabilityService as unknown as AvailabilityService
     );
 
     await expect(
@@ -156,9 +158,9 @@ describe("PublicService appointment creation", () => {
     }) };
 
     const service = new PublicService(
-      repository,
-      availabilityService as never,
-      appointmentService as never
+      repository as unknown as PublicRepository,
+      availabilityService as unknown as AvailabilityService,
+      appointmentService as unknown as AppointmentService
     );
 
     await service.createAppointment("pk_live_test", {
@@ -189,9 +191,9 @@ describe("PublicService appointment creation", () => {
     const appointmentService = { create: jest.fn().mockResolvedValue({}) };
 
     const service = new PublicService(
-      repository,
-      { getAvailability: jest.fn() } as never,
-      appointmentService as never
+      repository as unknown as PublicRepository,
+      { getAvailability: jest.fn() } as unknown as AvailabilityService,
+      appointmentService as unknown as AppointmentService
     );
 
     await service.createAppointment("pk_live_test", {

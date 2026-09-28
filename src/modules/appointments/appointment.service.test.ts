@@ -82,7 +82,7 @@ describe("AppointmentService.create", () => {
       status: "CONFIRMED"
     } as Appointment);
 
-    const service = new AppointmentService(repository as never);
+    const service = new AppointmentService(repository as unknown as AppointmentRepository);
 
     const result = await service.create(createInput());
 
@@ -101,7 +101,7 @@ describe("AppointmentService.create", () => {
     const repository = createRepositoryMock();
     repository.getCreationContext.mockResolvedValue(createContext() as never);
 
-    const service = new AppointmentService(repository as never);
+    const service = new AppointmentService(repository as unknown as AppointmentRepository);
 
     await expect(
       service.create(
@@ -121,7 +121,7 @@ describe("AppointmentService.create", () => {
       blocked: true
     } as never);
 
-    const service = new AppointmentService(repository as never);
+    const service = new AppointmentService(repository as unknown as AppointmentRepository);
 
     await expect(service.create(createInput())).rejects.toBeInstanceOf(
       AppointmentConflictError
@@ -135,7 +135,7 @@ describe("AppointmentService.create", () => {
     repository.getCreationContext.mockResolvedValue(createContext() as never);
     repository.professionalHasConflict.mockResolvedValue(true);
 
-    const service = new AppointmentService(repository as never);
+    const service = new AppointmentService(repository as unknown as AppointmentRepository);
 
     await expect(service.create(createInput())).rejects.toBeInstanceOf(
       AppointmentConflictError
@@ -152,7 +152,7 @@ describe("AppointmentService.create", () => {
       constraint: "EXCL_appointments_professional_time"
     });
 
-    const service = new AppointmentService(repository as never);
+    const service = new AppointmentService(repository as unknown as AppointmentRepository);
 
     await expect(service.create(createInput())).rejects.toBeInstanceOf(
       AppointmentConflictError
@@ -169,7 +169,7 @@ describe("AppointmentService.create", () => {
       }
     } as never);
 
-    const service = new AppointmentService(repository as never);
+    const service = new AppointmentService(repository as unknown as AppointmentRepository);
 
     await expect(
       service.create({

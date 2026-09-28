@@ -1,4 +1,5 @@
 import { ConfigurationService } from "./configuration.service.js";
+import { ConfigurationRepository } from "./configuration.repository.js";
 
 describe("ConfigurationService - configuration", () => {
   it("crea un profesional con el tenant recibido", async () => {
@@ -11,7 +12,7 @@ describe("ConfigurationService - configuration", () => {
       })
     };
 
-    const service = new ConfigurationService(repository);
+    const service = new ConfigurationService(repository as unknown as ConfigurationRepository);
 
     await service.createEmployee({
       tenantId: "tenant-1",
@@ -34,7 +35,7 @@ describe("ConfigurationService - configuration", () => {
       })
     };
 
-    const service = new ConfigurationService(repository);
+    const service = new ConfigurationService(repository as unknown as ConfigurationRepository);
 
     await service.updateEmployeeStatus({
       tenantId: "tenant-1",
@@ -54,7 +55,7 @@ describe("ConfigurationService - configuration", () => {
       updateEmployeeStatus: jest.fn()
     };
 
-    const service = new ConfigurationService(repository);
+    const service = new ConfigurationService(repository as unknown as ConfigurationRepository);
 
     await expect(
       service.updateEmployeeStatus({
@@ -81,7 +82,7 @@ describe("ConfigurationService - business hours", () => {
       })
     };
 
-    const service = new ConfigurationService(repository);
+    const service = new ConfigurationService(repository as unknown as ConfigurationRepository);
 
     await service.createBusinessHour({
       tenantId: "tenant-1",
@@ -103,7 +104,7 @@ describe("ConfigurationService - business hours", () => {
       createBusinessHour: jest.fn()
     };
 
-    const service = new ConfigurationService(repository);
+    const service = new ConfigurationService(repository as unknown as ConfigurationRepository);
 
     await expect(service.createBusinessHour({
       tenantId: "tenant-1",
