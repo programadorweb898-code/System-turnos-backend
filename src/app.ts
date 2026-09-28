@@ -1,4 +1,5 @@
 import express from "express";
+import helmet from "helmet";
 import { createAuthRouter } from "./modules/auth/auth.routes.js";
 import { createConfigurationRouter } from "./modules/configuration/configuration.routes.js";
 import { createTenantRouter } from "./modules/tenant/tenant.routes.js";
@@ -9,6 +10,7 @@ import { createAvailabilityRouter } from "./modules/availability/availability.ro
 export const createApp = () => {
   const app = express();
 
+  app.use(helmet());
   app.use(express.json());
 
   app.get("/health", (_req, res) => {
