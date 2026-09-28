@@ -52,7 +52,7 @@ export const requireAuthentication = (
     }
 
     try {
-      const payload = jwt.verify(token, env.jwtSecret);
+      const payload = jwt.verify(token, env.jwtSecret, { algorithms: ["HS256"] });
 
       if (
         typeof payload === "string" ||
