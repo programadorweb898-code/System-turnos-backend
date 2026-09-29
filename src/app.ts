@@ -1,5 +1,6 @@
 import express, { ErrorRequestHandler } from "express";
 import helmet from "helmet";
+import { env } from "./config/env.js";
 import { createAuthRouter } from "./modules/auth/auth.routes.js";
 import { createConfigurationRouter } from "./modules/configuration/configuration.routes.js";
 import { createTenantRouter } from "./modules/tenant/tenant.routes.js";
@@ -9,6 +10,13 @@ import { createAvailabilityRouter } from "./modules/availability/availability.ro
 
 export const createApp = () => {
   const app = express();
+
+  // Detras de un proxy inverso sin esto, req.ip devuelve la IP del proxy y el
+  // rate limiting por IP agruparia a todos los usuarios en un mismo contador.
+  // Se confiar en un numero fijo de saltos y no en `true`, porque con `true`
+  // un cliente podria falsear su IP mediante el header X-Forwarded-For y
+  // evadir el limitador.
+  app.set("trust proxy", env.trustProxyHops);
 
   app.use(helmet());
   app.use(express.json({ limit: "100kb" }));

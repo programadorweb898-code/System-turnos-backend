@@ -1,4 +1,4 @@
-import { validateJwtSecret } from "./env.validation.js";
+import { parseTrustProxyHops, validateJwtSecret } from "./env.validation.js";
 
 const nodeEnv = process.env.NODE_ENV ?? "development";
 const jwtSecret = process.env.JWT_SECRET ?? "";
@@ -9,5 +9,6 @@ export const env = {
   nodeEnv,
   port: Number(process.env.PORT ?? 3000),
   databaseUrl: process.env.DATABASE_URL ?? "",
-  jwtSecret
+  jwtSecret,
+  trustProxyHops: parseTrustProxyHops(process.env.TRUST_PROXY_HOPS)
 };
