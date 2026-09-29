@@ -70,7 +70,7 @@ describe("validación de tenant", () => {
           ...validCreateInput,
           maxDailyAppointments: 2.5
         })
-      ).toThrow("La cantidad máxima diaria no puede ser negativa.");
+      ).toThrow("La cantidad máxima diaria debe ser un número entero.");
     });
 
     it("acepta cero como anticipación mínima", () => {
@@ -97,7 +97,7 @@ describe("validación de tenant", () => {
           ...validCreateInput,
           minimumBookingNoticeHours: 1.5
         })
-      ).toThrow("La anticipación mínima en horas no puede ser negativa.");
+      ).toThrow("La anticipación mínima en horas debe ser un número entero.");
     });
   });
 

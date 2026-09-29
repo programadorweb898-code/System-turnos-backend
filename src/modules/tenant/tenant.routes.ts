@@ -9,6 +9,8 @@ export const createTenantRouter = (
 
   router.get("/tenant", requireAuthentication(), tenantController.getCurrent);
 
+  router.patch("/tenant", requireAuthentication(), tenantController.update);
+
   router.post(
     "/tenant/publication",
     requireAuthentication(),

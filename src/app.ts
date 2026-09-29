@@ -1,7 +1,9 @@
-import express, { ErrorRequestHandler } from "express";
+import express, { ErrorRequestHandler, Request, Response } from "express";
 import helmet from "helmet";
 import { env } from "./config/env.js";
+import { AppDataSource } from "./database/data-source.js";
 import { createAuthRouter } from "./modules/auth/auth.routes.js";
+import { createUserRouter } from "./modules/auth/user.routes.js";
 import { createConfigurationRouter } from "./modules/configuration/configuration.routes.js";
 import { createTenantRouter } from "./modules/tenant/tenant.routes.js";
 import { createWebsiteIntegrationRouter } from "./modules/website-integrations/website-integration.routes.js";
@@ -27,12 +29,45 @@ export const createApp = () => {
     });
   });
 
+  // Liveness (/health) solo prueba que el proceso responde. La readiness tiene
+  // que consultar la base: sin ella, un deploy puede dar por sano un servicio
+  // que no tiene migraciones aplicadas y le manda trafico para nada.
+  app.get("/health/ready", async (_req, res) => {
+    try {
+      await AppDataSource.query("SELECT 1");
+      res.status(200).json({
+        status: "ok",
+        database: "up"
+      });
+    } catch {
+      res.status(503).json({
+        error: {
+          code: "DATABASE_UNAVAILABLE",
+          message: "La base de datos no está disponible."
+        }
+      });
+    }
+  });
+
   app.use("/api/v1/auth", createAuthRouter());
   app.use("/api/v1/admin", createTenantRouter());
+  app.use("/api/v1/admin", createUserRouter());
   app.use("/api/v1/admin/configuration", createConfigurationRouter());
   app.use("/api/v1/admin/website-integrations", createWebsiteIntegrationRouter());
   app.use("/api/v1/public", createPublicRouter());
   app.use("/api/v1", createAvailabilityRouter());
+
+  // Sin este middleware, Express 5 responde a las rutas inexistentes con su
+  // pagina HTML por defecto y el cliente recibe algo que no cumple el contrato
+  // de error { error: { code, message } } que respetan el resto de handlers.
+  app.use((_req: Request, res: Response) => {
+    res.status(404).json({
+      error: {
+        code: "NOT_FOUND",
+        message: "El recurso solicitado no existe."
+      }
+    });
+  });
 
   const errorHandler: ErrorRequestHandler = (error, _req, res, next) => {
     if (res.headersSent) {
@@ -66,6 +101,11 @@ export const createApp = () => {
       });
       return;
     }
+
+    // Sin esto, un 500 sale en la respuesta pero no deja rastro en ningun lado:
+    // en staging no hay forma de saber por que fallo. Se registra la causa real
+    // y el cliente solo recibe el mensaje generico.
+    console.error("Error no controlado:", error);
 
     res.status(500).json({
       error: {
