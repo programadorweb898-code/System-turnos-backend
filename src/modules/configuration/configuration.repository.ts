@@ -4,18 +4,21 @@ import { Service } from "../../database/entities/service.entity.js";
 import { Employee } from "../../database/entities/employee.entity.js";
 import { BusinessHour } from "../../database/entities/business-hour.entity.js";
 import { BlockedTime } from "../../database/entities/blocked-time.entity.js";
+import { ProfessionalService } from "../../database/entities/professional-service.entity.js";
 
 export class ConfigurationRepository {
   private readonly services: Repository<Service>;
   private readonly employees: Repository<Employee>;
   private readonly businessHours: Repository<BusinessHour>;
   private readonly blockedTimes: Repository<BlockedTime>;
+  private readonly professionalServices: Repository<ProfessionalService>;
 
   constructor() {
     this.services = AppDataSource.getRepository(Service);
     this.employees = AppDataSource.getRepository(Employee);
     this.businessHours = AppDataSource.getRepository(BusinessHour);
     this.blockedTimes = AppDataSource.getRepository(BlockedTime);
+    this.professionalServices = AppDataSource.getRepository(ProfessionalService);
   }
 
   async createService(
@@ -97,6 +100,61 @@ export class ConfigurationRepository {
     return this.blockedTimes.find({
       where: { tenantId },
       order: { startsAt: "ASC" }
+    });
+  }
+
+  findEmployeeByTenant(tenantId: string, employeeId: string): Promise<Employee | null> {
+    return this.employees.findOne({ where: { id: employeeId, tenantId } });
+  }
+
+  async findServicesAssignedToEmployee(
+    tenantId: string,
+    employeeId: string
+  ): Promise<Service[]> {
+    const assignments = await this.professionalServices.find({
+      where: { tenantId, professionalId: employeeId }
+    });
+
+    const serviceIds = assignments.map((assignment) => assignment.serviceId);
+
+    if (serviceIds.length === 0) {
+      return [];
+    }
+
+    return this.services.find({
+      where: serviceIds.map((id) => ({ id, tenantId })),
+      order: { name: "ASC" }
+    });
+  }
+
+  async countAssignableServicesByTenant(
+    tenantId: string,
+    serviceIds: string[]
+  ): Promise<number> {
+    if (serviceIds.length === 0) {
+      return 0;
+    }
+
+    return this.services.count({ where: serviceIds.map((id) => ({ id, tenantId })) });
+  }
+
+  async replaceEmployeeServiceAssignments(
+    tenantId: string,
+    employeeId: string,
+    serviceIds: string[]
+  ): Promise<void> {
+    await AppDataSource.transaction(async (manager) => {
+      const repository = manager.getRepository(ProfessionalService);
+
+      await repository.delete({ tenantId, professionalId: employeeId });
+
+      if (serviceIds.length > 0) {
+        await repository.save(
+          serviceIds.map((serviceId) =>
+            repository.create({ tenantId, professionalId: employeeId, serviceId })
+          )
+        );
+      }
     });
   }
 }

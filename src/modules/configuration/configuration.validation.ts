@@ -4,6 +4,7 @@ import {
   CreateBlockedTimeInput,
   CreateEmployeeInput,
   CreateServiceInput,
+  ReplaceProfessionalServicesInput,
   UpdateEmployeeStatusInput
 } from "./configuration.types.js";
 
@@ -66,6 +67,23 @@ const blockedTimeInputSchema = z.object({
   message: "El inicio del bloqueo debe ser anterior al fin."
 });
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export const replaceProfessionalServicesRequestSchema = z.object({
+  serviceIds: z
+    .array(z.string().regex(UUID_PATTERN))
+    .max(200)
+    .refine((ids) => new Set(ids).size === ids.length, {
+      message: "No se permiten servicios duplicados."
+    })
+});
+
+const replaceProfessionalServicesInputSchema = z.object({
+  tenantId: z.string().min(1),
+  professionalId: z.string().regex(UUID_PATTERN),
+  serviceIds: z.array(z.string().regex(UUID_PATTERN)).max(200)
+});
+
 export function validateServiceInput(input: CreateServiceInput): void {
   serviceInputSchema.parse(input);
 }
@@ -84,4 +102,10 @@ export function validateBusinessHourInput(input: CreateBusinessHourInput): void 
 
 export function validateBlockedTimeInput(input: CreateBlockedTimeInput): void {
   blockedTimeInputSchema.parse(input);
+}
+
+export function validateReplaceProfessionalServicesInput(
+  input: ReplaceProfessionalServicesInput
+): void {
+  replaceProfessionalServicesInputSchema.parse(input);
 }

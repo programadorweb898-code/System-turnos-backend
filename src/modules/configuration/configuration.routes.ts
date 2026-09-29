@@ -38,6 +38,18 @@ export const createConfigurationRouter = (
   );
 
   router.get(
+    "/professionals/:id/services",
+    requireAuthentication(),
+    configurationController.listProfessionalServices
+  );
+
+  router.put(
+    "/professionals/:id/services",
+    requireAuthentication(),
+    configurationController.replaceProfessionalServices
+  );
+
+  router.get(
     "/business-hours",
     requireAuthentication(),
     configurationController.listBusinessHours

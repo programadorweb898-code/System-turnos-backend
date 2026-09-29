@@ -29,3 +29,9 @@ export interface CreateBlockedTimeInput {
   endsAt: Date;
   reason?: string;
 }
+
+export interface ReplaceProfessionalServicesInput {
+  tenantId: string;
+  professionalId: string;
+  serviceIds: string[];
+}
