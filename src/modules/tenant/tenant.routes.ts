@@ -9,5 +9,17 @@ export const createTenantRouter = (
 
   router.get("/tenant", requireAuthentication(), tenantController.getCurrent);
 
+  router.post(
+    "/tenant/publication",
+    requireAuthentication(),
+    tenantController.publish
+  );
+
+  router.post(
+    "/tenant/unpublication",
+    requireAuthentication(),
+    tenantController.unpublish
+  );
+
   return router;
 };

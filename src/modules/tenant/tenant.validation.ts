@@ -1,6 +1,6 @@
 import { CreateTenantInput, UpdateTenantInput } from "./tenant.types.js";
 
-const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+export const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 export function validateCreateTenantInput(input: CreateTenantInput): void {
   validateRequiredText(input.name, "name");
@@ -37,10 +37,17 @@ function validateSlug(value: string): void {
 }
 
 function validateTimezone(value: string): void {
+  if (!isValidTimezone(value)) {
+    throw new Error("La zona horaria no es válida.");
+  }
+}
+
+export function isValidTimezone(value: string): boolean {
   try {
     new Intl.DateTimeFormat("en-US", { timeZone: value }).format();
+    return true;
   } catch {
-    throw new Error("La zona horaria no es válida.");
+    return false;
   }
 }
 
