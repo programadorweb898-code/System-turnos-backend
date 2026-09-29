@@ -1,5 +1,6 @@
 import { AppDataSource } from "../../database/data-source.js";
 import { AppointmentRepository } from "./appointment.repository.js";
+import { ConfigurationRepository } from "../configuration/configuration.repository.js";
 
 describe("AppointmentRepository.create", () => {
   const tenantId = "11111111-1111-4111-8111-111111111111";
@@ -147,6 +148,42 @@ describe("AppointmentRepository.create", () => {
 
     await expect(repository.create(input)).rejects.toMatchObject({
       message: "El profesional está bloqueado en el horario seleccionado."
+    });
+  });
+
+  it("detects a conflicting appointment for a professional", async () => {
+    const appointmentRepository = new AppointmentRepository(AppDataSource);
+    const configurationRepository = new ConfigurationRepository();
+    const appointmentStart = new Date("2099-11-01T12:00:00.000Z");
+    const appointmentEnd = new Date("2099-11-01T12:30:00.000Z");
+    const blockedStart = new Date("2099-11-01T12:15:00.000Z");
+    const blockedEnd = new Date("2099-11-01T13:00:00.000Z");
+
+    await appointmentRepository.create({
+      tenantId,
+      customerName: "Blocked customer",
+      customerPhone: "+5491100000020",
+      customerNotes: null,
+      serviceId,
+      professionalId,
+      startAt: appointmentStart,
+      endAt: appointmentEnd,
+      timezone: "UTC",
+      maxDailyAppointments: 1
+    });
+
+    const conflicts = await configurationRepository.findAppointmentsOverlappingBlockedTime(
+      tenantId,
+      professionalId,
+      blockedStart,
+      blockedEnd
+    );
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]).toMatchObject({
+      customerName: "Blocked customer",
+      startAt: appointmentStart,
+      endAt: appointmentEnd
     });
   });
 });
