@@ -1,4 +1,4 @@
-import { MoreThan, Repository } from "typeorm";
+import { EntityManager, MoreThan, Repository } from "typeorm";
 import { AppDataSource } from "../../database/data-source.js";
 import { Tenant } from "../../database/entities/tenant.entity.js";
 import { Service } from "../../database/entities/service.entity.js";
@@ -9,10 +9,17 @@ import { isValidTimezone, SLUG_PATTERN } from "./tenant.validation.js";
 import { TenantPublicationRequirements, TenantStatus } from "./tenant.types.js";
 
 export class TenantRepository {
-  private readonly repository: Repository<Tenant>;
+  private readonly manager: EntityManager;
 
-  constructor() {
-    this.repository = AppDataSource.getRepository(Tenant);
+  // Se recibe un EntityManager y no un DataSource para que este repositorio
+  // pueda participar de una transaccion externa: el alta de un negocio y su
+  // usuario administrador tienen que ser atomicos.
+  constructor(manager: EntityManager = AppDataSource.manager) {
+    this.manager = manager;
+  }
+
+  private get repository(): Repository<Tenant> {
+    return this.manager.getRepository(Tenant);
   }
 
   findById(id: string): Promise<Tenant | null> {
@@ -50,19 +57,19 @@ export class TenantRepository {
   }
 
   countActiveServices(tenantId: string): Promise<number> {
-    return AppDataSource.getRepository(Service).count({
+    return this.manager.getRepository(Service).count({
       where: { tenantId, status: "active", duration: MoreThan(0) }
     });
   }
 
   countActiveProfessionals(tenantId: string): Promise<number> {
-    return AppDataSource.getRepository(Employee).count({
+    return this.manager.getRepository(Employee).count({
       where: { tenantId, status: "active" }
     });
   }
 
   countValidBusinessHours(tenantId: string): Promise<number> {
-    return AppDataSource.getRepository(BusinessHour)
+    return this.manager.getRepository(BusinessHour)
       .createQueryBuilder("businessHour")
       .where("businessHour.tenant_id = :tenantId", { tenantId })
       .andWhere("businessHour.day_of_week >= 0")
@@ -94,7 +101,8 @@ export class TenantRepository {
   }
 
   private countEligibleAssignments(tenantId: string): Promise<number> {
-    return AppDataSource.getRepository(ProfessionalService)
+    return this.manager
+      .getRepository(ProfessionalService)
       .createQueryBuilder("assignment")
       .innerJoin(Employee, "employee", "employee.id = assignment.professional_id")
       .innerJoin(Service, "service", "service.id = assignment.service_id")
