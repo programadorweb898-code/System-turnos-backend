@@ -23,6 +23,8 @@ module.exports = {
   moduleNameMapper: {
     "^(\\.{1,2}/.*)\\.js$": "$1"
   },
+  testPathIgnorePatterns: ["/node_modules/", "/dist/"],
+  modulePathIgnorePatterns: ["/dist/"],
   setupFiles: ["<rootDir>/src/test/setup.ts"],
   testEnvironment: "node"
 };
