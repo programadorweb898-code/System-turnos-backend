@@ -1,4 +1,4 @@
-import { AuthService } from "./auth.service.js";
+import { AuthService, InvalidCredentialsError, UserDisabledError } from "./auth.service.js";
 import { AuthController } from "./auth.controller.js";
 
 describe("AuthController", () => {
@@ -13,11 +13,7 @@ describe("AuthController", () => {
     const authService = {
       login: jest.fn().mockResolvedValue({
         accessToken: "token",
-        user: {
-          id: "user-1",
-          tenantId: "tenant-1",
-          role: "ADMIN"
-        }
+        user: { id: "user-1", tenantId: "tenant-1", role: "ADMIN" }
       })
     };
 
@@ -25,12 +21,7 @@ describe("AuthController", () => {
     const response = createResponseMock();
 
     await controller.login(
-      {
-        body: {
-          email: "admin@example.com",
-          password: "password123"
-        }
-      } as never,
+      { body: { email: "admin@example.com", password: "password123" } } as never,
       response as never
     );
 
@@ -41,28 +32,17 @@ describe("AuthController", () => {
     expect(response.status).toHaveBeenCalledWith(200);
     expect(response.json).toHaveBeenCalledWith({
       accessToken: "token",
-      user: {
-        id: "user-1",
-        tenantId: "tenant-1",
-        role: "ADMIN"
-      }
+      user: { id: "user-1", tenantId: "tenant-1", role: "ADMIN" }
     });
   });
 
   it("rechaza una solicitud inválida", async () => {
-    const authService = {
-      login: jest.fn()
-    };
-
+    const authService = { login: jest.fn() };
     const controller = new AuthController(authService as unknown as AuthService);
     const response = createResponseMock();
 
     await controller.login(
-      {
-        body: {
-          email: "admin@example.com"
-        }
-      } as never,
+      { body: { email: "admin@example.com" } } as never,
       response as never
     );
 
@@ -78,46 +58,31 @@ describe("AuthController", () => {
 
   it("devuelve 403 cuando el usuario está deshabilitado", async () => {
     const authService = {
-      login: jest.fn().mockRejectedValue(new Error("Usuario deshabilitado"))
+      login: jest.fn().mockRejectedValue(new UserDisabledError())
     };
-
     const controller = new AuthController(authService as unknown as AuthService);
     const response = createResponseMock();
 
     await controller.login(
-      {
-        body: {
-          email: "admin@example.com",
-          password: "password123"
-        }
-      } as never,
+      { body: { email: "admin@example.com", password: "password123" } } as never,
       response as never
     );
 
     expect(response.status).toHaveBeenCalledWith(403);
     expect(response.json).toHaveBeenCalledWith({
-      error: {
-        code: "USER_DISABLED",
-        message: "Usuario deshabilitado"
-      }
+      error: { code: "USER_DISABLED", message: "Usuario deshabilitado" }
     });
   });
 
   it("devuelve 401 para credenciales inválidas", async () => {
     const authService = {
-      login: jest.fn().mockRejectedValue(new Error("Credenciales inválidas"))
+      login: jest.fn().mockRejectedValue(new InvalidCredentialsError())
     };
-
     const controller = new AuthController(authService as unknown as AuthService);
     const response = createResponseMock();
 
     await controller.login(
-      {
-        body: {
-          email: "admin@example.com",
-          password: "wrong-password"
-        }
-      } as never,
+      { body: { email: "admin@example.com", password: "wrong-password" } } as never,
       response as never
     );
 

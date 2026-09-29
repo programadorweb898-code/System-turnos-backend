@@ -1,5 +1,9 @@
 import { Request, Response } from "express";
-import { AuthService } from "./auth.service.js";
+import {
+  AuthService,
+  InvalidCredentialsError,
+  UserDisabledError
+} from "./auth.service.js";
 
 export class AuthController {
   constructor(private readonly authService = new AuthService()) {}
@@ -24,28 +28,26 @@ export class AuthController {
 
     try {
       const result = await this.authService.login({ email, password });
-
       res.status(200).json(result);
     } catch (error) {
-      if (
-        error instanceof Error &&
-        error.message === "Usuario deshabilitado"
-      ) {
+      if (error instanceof UserDisabledError) {
         res.status(403).json({
+          error: { code: "USER_DISABLED", message: error.message }
+        });
+        return;
+      }
+
+      if (error instanceof InvalidCredentialsError) {
+        res.status(401).json({
           error: {
-            code: "USER_DISABLED",
-            message: error.message
+            code: "INVALID_CREDENTIALS",
+            message: "Credenciales inválidas"
           }
         });
         return;
       }
 
-      res.status(401).json({
-        error: {
-          code: "INVALID_CREDENTIALS",
-          message: "Credenciales inválidas"
-        }
-      });
+      throw error;
     }
   };
 }
