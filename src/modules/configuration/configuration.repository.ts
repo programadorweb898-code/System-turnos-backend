@@ -68,8 +68,8 @@ export class ConfigurationRepository {
       ])
       .where("appointment.tenant_id = :tenantId", { tenantId })
       .andWhere("appointment.status IN ('PENDING', 'CONFIRMED')")
-      .andWhere("appointment.starts_at < :endsAt", { endsAt })
-      .andWhere("appointment.ends_at > :startsAt", { startsAt })
+      .andWhere("appointment.start_at < :endsAt", { endsAt })
+      .andWhere("appointment.end_at > :startsAt", { startsAt })
       .orderBy("appointment.start_at", "ASC");
 
     if (professionalId) {
