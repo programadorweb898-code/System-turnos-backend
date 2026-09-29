@@ -1,11 +1,13 @@
 import { Request, Response } from "express";
 import { Service } from "../../database/entities/service.entity.js";
 import {
+  BlockedTimeConflictsError,
   ConfigurationService,
   ProfessionalNotFoundError,
   ProfessionalServicesNotAssignableError
 } from "./configuration.service.js";
 import {
+  createBlockedTimeRequestSchema,
   createBusinessHourRequestSchema,
   createEmployeeRequestSchema,
   createServiceRequestSchema,
@@ -366,4 +368,96 @@ export class ConfigurationController {
     });
   };
 
+  listBlockedTimes = async (req: Request, res: Response): Promise<void> => {
+    const tenantId = req.authenticatedUser?.tenantId;
+
+    if (!tenantId) {
+      res.status(401).json({
+        error: {
+          code: "AUTHENTICATION_REQUIRED",
+          message: "Se requiere autenticación."
+        }
+      });
+      return;
+    }
+
+    const blockedTimes = await this.configurationService.listBlockedTimes(tenantId);
+
+    res.status(200).json(
+      blockedTimes.map((blockedTime) => ({
+        id: blockedTime.id,
+        professionalId: blockedTime.professionalId,
+        startsAt: blockedTime.startsAt.toISOString(),
+        endsAt: blockedTime.endsAt.toISOString(),
+        reason: blockedTime.reason
+      }))
+    );
+  };
+
+  createBlockedTime = async (req: Request, res: Response): Promise<void> => {
+    const tenantId = req.authenticatedUser?.tenantId;
+
+    if (!tenantId) {
+      res.status(401).json({
+        error: {
+          code: "AUTHENTICATION_REQUIRED",
+          message: "Se requiere autenticación."
+        }
+      });
+      return;
+    }
+
+    const result = createBlockedTimeRequestSchema.safeParse(req.body ?? {});
+
+    if (!result.success) {
+      res.status(400).json({
+        error: {
+          code: "INVALID_REQUEST",
+          message: "Los datos del bloqueo no son válidos."
+        }
+      });
+      return;
+    }
+
+    try {
+      const blockedTime = await this.configurationService.createBlockedTime({
+        tenantId,
+        startsAt: result.data.startsAt,
+        endsAt: result.data.endsAt,
+        reason: result.data.reason,
+        professionalId: result.data.professionalId ?? null
+      });
+
+      res.status(201).json({
+        id: blockedTime.id,
+        professionalId: blockedTime.professionalId,
+        startsAt: blockedTime.startsAt.toISOString(),
+        endsAt: blockedTime.endsAt.toISOString(),
+        reason: blockedTime.reason
+      });
+    } catch (error) {
+      if (error instanceof BlockedTimeConflictsError) {
+        res.status(409).json({
+          error: {
+            code: "BLOCKED_TIME_CONFLICTS",
+            message: error.message,
+            details: error.details
+          }
+        });
+        return;
+      }
+
+      if (error instanceof ProfessionalNotFoundError) {
+        res.status(404).json({
+          error: {
+            code: "PROFESSIONAL_NOT_FOUND",
+            message: "El profesional no existe."
+          }
+        });
+        return;
+      }
+
+      throw error;
+    }
+  };
 }

@@ -20,6 +20,18 @@ import {
 export class ProfessionalNotFoundError extends Error {}
 export class ProfessionalServicesNotAssignableError extends Error {}
 
+export class BlockedTimeConflictsError extends Error {
+  readonly details: string[];
+
+  constructor(details: string[]) {
+    super(
+      "No se puede crear el bloqueo porque hay turnos confirmados en ese intervalo."
+    );
+    this.name = "BlockedTimeConflictsError";
+    this.details = details;
+  }
+}
+
 export class ConfigurationService {
   constructor(
     private readonly repository = new ConfigurationRepository()
@@ -56,14 +68,48 @@ export class ConfigurationService {
     );
   }
 
+  listBlockedTimes(tenantId: string) {
+    return this.repository.findBlockedTimesByTenant(tenantId);
+  }
+
   async createBlockedTime(input: CreateBlockedTimeInput) {
     validateBlockedTimeInput(input);
+
+    const professionalId = input.professionalId ?? null;
+
+    if (professionalId) {
+      const employee = await this.repository.findEmployeeByTenant(
+        input.tenantId,
+        professionalId
+      );
+
+      if (!employee) {
+        throw new ProfessionalNotFoundError();
+      }
+    }
+
+    const conflicts = await this.repository.findAppointmentsOverlappingBlockedTime(
+      input.tenantId,
+      professionalId,
+      input.startsAt,
+      input.endsAt
+    );
+
+    if (conflicts.length > 0) {
+      throw new BlockedTimeConflictsError(
+        conflicts.map(
+          (conflict) =>
+            `Turno del ${conflict.startAt.toISOString()} al ${conflict.endAt.toISOString()} (${conflict.customerName}).`
+        )
+      );
+    }
 
     return this.repository.createBlockedTime(
       input.tenantId,
       input.startsAt,
       input.endsAt,
-      input.reason?.trim() || null
+      input.reason?.trim() || null,
+      professionalId
     );
   }
 
@@ -87,10 +133,6 @@ export class ConfigurationService {
 
   listBusinessHours(tenantId: string) {
     return this.repository.findBusinessHoursByTenant(tenantId);
-  }
-
-  listBlockedTimes(tenantId: string) {
-    return this.repository.findBlockedTimesByTenant(tenantId);
   }
 
   async listProfessionalServices(

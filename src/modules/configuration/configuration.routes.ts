@@ -61,5 +61,17 @@ export const createConfigurationRouter = (
     configurationController.createBusinessHour
   );
 
+  router.get(
+    "/blocked-times",
+    requireAuthentication(),
+    configurationController.listBlockedTimes
+  );
+
+  router.post(
+    "/blocked-times",
+    requireAuthentication(),
+    configurationController.createBlockedTime
+  );
+
   return router;
 };

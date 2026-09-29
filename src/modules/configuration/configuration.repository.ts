@@ -5,6 +5,7 @@ import { Employee } from "../../database/entities/employee.entity.js";
 import { BusinessHour } from "../../database/entities/business-hour.entity.js";
 import { BlockedTime } from "../../database/entities/blocked-time.entity.js";
 import { ProfessionalService } from "../../database/entities/professional-service.entity.js";
+import { Appointment } from "../../database/entities/appointment.entity.js";
 
 export class ConfigurationRepository {
   private readonly services: Repository<Service>;
@@ -12,6 +13,7 @@ export class ConfigurationRepository {
   private readonly businessHours: Repository<BusinessHour>;
   private readonly blockedTimes: Repository<BlockedTime>;
   private readonly professionalServices: Repository<ProfessionalService>;
+  private readonly appointments: Repository<Appointment>;
 
   constructor() {
     this.services = AppDataSource.getRepository(Service);
@@ -19,6 +21,7 @@ export class ConfigurationRepository {
     this.businessHours = AppDataSource.getRepository(BusinessHour);
     this.blockedTimes = AppDataSource.getRepository(BlockedTime);
     this.professionalServices = AppDataSource.getRepository(ProfessionalService);
+    this.appointments = AppDataSource.getRepository(Appointment);
   }
 
   async createService(
@@ -47,14 +50,51 @@ export class ConfigurationRepository {
     );
   }
 
+  async findAppointmentsOverlappingBlockedTime(
+    tenantId: string,
+    professionalId: string | null,
+    startsAt: Date,
+    endsAt: Date
+  ): Promise<
+    Array<{ id: string; customerName: string; startAt: Date; endAt: Date }>
+  > {
+    const query = this.appointments
+      .createQueryBuilder("appointment")
+      .select([
+        "appointment.id AS id",
+        "appointment.customer_name AS customerName",
+        "appointment.start_at AS startAt",
+        "appointment.end_at AS endAt"
+      ])
+      .where("appointment.tenant_id = :tenantId", { tenantId })
+      .andWhere("appointment.status IN ('PENDING', 'CONFIRMED')")
+      .andWhere("appointment.starts_at < :endsAt", { endsAt })
+      .andWhere("appointment.ends_at > :startsAt", { startsAt })
+      .orderBy("appointment.start_at", "ASC");
+
+    if (professionalId) {
+      query.andWhere("appointment.professional_id = :professionalId", { professionalId });
+    }
+
+    return query.getRawMany();
+  }
+
+  findBlockedTimesByTenant(tenantId: string): Promise<BlockedTime[]> {
+    return this.blockedTimes.find({
+      where: { tenantId },
+      order: { startsAt: "ASC" }
+    });
+  }
+
   async createBlockedTime(
     tenantId: string,
     startsAt: Date,
     endsAt: Date,
-    reason: string | null
+    reason: string | null,
+    professionalId: string | null = null
   ): Promise<BlockedTime> {
     return this.blockedTimes.save(
-      this.blockedTimes.create({ tenantId, startsAt, endsAt, reason })
+      this.blockedTimes.create({ tenantId, startsAt, endsAt, reason, professionalId })
     );
   }
 
@@ -93,13 +133,6 @@ export class ConfigurationRepository {
     return this.businessHours.find({
       where: { tenantId },
       order: { dayOfWeek: "ASC", startTime: "ASC" }
-    });
-  }
-
-  findBlockedTimesByTenant(tenantId: string): Promise<BlockedTime[]> {
-    return this.blockedTimes.find({
-      where: { tenantId },
-      order: { startsAt: "ASC" }
     });
   }
 

@@ -28,6 +28,7 @@ export interface CreateBlockedTimeInput {
   startsAt: Date;
   endsAt: Date;
   reason?: string;
+  professionalId?: string | null;
 }
 
 export interface ReplaceProfessionalServicesInput {

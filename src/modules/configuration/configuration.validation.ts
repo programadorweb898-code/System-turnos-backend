@@ -109,3 +109,12 @@ export function validateReplaceProfessionalServicesInput(
 ): void {
   replaceProfessionalServicesInputSchema.parse(input);
 }
+
+export const createBlockedTimeRequestSchema = z.object({
+  startsAt: z.coerce.date(),
+  endsAt: z.coerce.date(),
+  reason: z.string().max(300).optional(),
+  professionalId: z.string().regex(UUID_PATTERN).nullable().optional()
+}).refine((input) => input.startsAt < input.endsAt, {
+  message: "El inicio del bloqueo debe ser anterior al fin."
+});
