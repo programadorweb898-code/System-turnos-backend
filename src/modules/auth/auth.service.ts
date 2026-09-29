@@ -8,6 +8,20 @@ const JWT_EXPIRES_IN = "4h";
 export const JWT_ISSUER = "system-turnos-api";
 export const JWT_AUDIENCE = "system-turnos-api";
 
+export class InvalidCredentialsError extends Error {
+  constructor() {
+    super("Credenciales inválidas");
+    this.name = "InvalidCredentialsError";
+  }
+}
+
+export class UserDisabledError extends Error {
+  constructor() {
+    super("Usuario deshabilitado");
+    this.name = "UserDisabledError";
+  }
+}
+
 export class AuthService {
   constructor(
     private readonly userRepository = new UserRepository(),
@@ -19,17 +33,17 @@ export class AuthService {
     const user = await this.userRepository.findByEmail(email);
 
     if (!user) {
-      throw new Error("Credenciales inválidas");
+      throw new InvalidCredentialsError();
     }
 
     if (user.status !== "ACTIVE") {
-      throw new Error("Usuario deshabilitado");
+      throw new UserDisabledError();
     }
 
     const passwordMatches = await bcrypt.compare(input.password, user.passwordHash);
 
     if (!passwordMatches) {
-      throw new Error("Credenciales inválidas");
+      throw new InvalidCredentialsError();
     }
 
     if (!this.jwtSecret) {
