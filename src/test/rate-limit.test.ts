@@ -2,7 +2,7 @@ import { AddressInfo } from "node:net";
 import { Server } from "node:http";
 import { createApp } from "../app.js";
 
-const TENANT_ID = "3f0d2a5c-8b41-4e2a-9f77-1c2d3e4f5a6b";
+const PUBLIC_KEY = "pk_live_test0000000000000000";
 
 async function listen(app: ReturnType<typeof createApp>): Promise<{
   server: Server;
@@ -21,6 +21,13 @@ async function close(server: Server): Promise<void> {
     server.close(() => resolve());
   });
 }
+
+const APPOINTMENT_BODY = JSON.stringify({
+  serviceId: "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
+  startAt: "2026-10-01T15:00:00.000Z",
+  customerName: "Cliente de prueba",
+  customerPhone: "5551234567"
+});
 
 describe("rate limiting de autenticacion", () => {
   it("responde 429 con el envelope de error del contrato", async () => {
@@ -73,11 +80,119 @@ describe("rate limiting de autenticacion", () => {
     const { server, baseUrl } = await listen(createApp());
 
     try {
+      const statuses: number[] = [];
+
       for (let attempt = 0; attempt < 15; attempt += 1) {
-        const response = await fetch(`${baseUrl}/api/v1/public/tenants/${TENANT_ID}`);
+        const response = await fetch(`${baseUrl}/api/v1/public/sites/${PUBLIC_KEY}`);
+        statuses.push(response.status);
+      }
+
+      expect(statuses.every((status) => status !== 429)).toBe(true);
+      // Si la ruta no existiera, todas las respuestas serian 404 y la
+      // asercion anterior pasaria sin comprobar nada. Este test hizo
+      // justamente eso contra /api/v1/public/tenants/:id, que nunca existio.
+      expect(statuses.some((status) => status !== 404)).toBe(true);
+    } finally {
+      await close(server);
+    }
+  });
+});
+
+describe("rate limiting de reserva publica de turnos", () => {
+  it("responde 429 al superar el limite del endpoint publico", async () => {
+    const { server, baseUrl } = await listen(createApp());
+
+    try {
+      const post = () =>
+        fetch(`${baseUrl}/api/v1/public/sites/${PUBLIC_KEY}/appointments`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: APPOINTMENT_BODY
+        });
+
+      for (let attempt = 0; attempt < 10; attempt += 1) {
+        const response = await post();
 
         expect(response.status).not.toBe(429);
       }
+
+      const limited = await post();
+
+      expect(limited.status).toBe(429);
+      expect(await limited.json()).toEqual({
+        error: {
+          code: "RATE_LIMIT_EXCEEDED",
+          message: "Demasiadas solicitudes. Intente nuevamente más tarde."
+        }
+      });
+    } finally {
+      await close(server);
+    }
+  });
+
+  it("expone los limites de ventana y cantidad como constantes", async () => {
+    const {
+      PUBLIC_APPOINTMENT_RATE_LIMIT_MAX_REQUESTS,
+      PUBLIC_APPOINTMENT_RATE_LIMIT_WINDOW_MS
+    } = await import("../middleware/rate-limit.js");
+
+    expect(PUBLIC_APPOINTMENT_RATE_LIMIT_MAX_REQUESTS).toBe(10);
+    expect(PUBLIC_APPOINTMENT_RATE_LIMIT_WINDOW_MS).toBe(60 * 1000);
+  });
+
+  it("no limita la lectura de disponibilidad del mismo sitio", async () => {
+    const { server, baseUrl } = await listen(createApp());
+
+    try {
+      const statuses: number[] = [];
+
+      for (let attempt = 0; attempt < 15; attempt += 1) {
+        const response = await fetch(
+          `${baseUrl}/api/v1/public/sites/${PUBLIC_KEY}/availability?serviceId=1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d&date=2026-10-01`
+        );
+        statuses.push(response.status);
+      }
+
+      expect(statuses.every((status) => status !== 429)).toBe(true);
+    } finally {
+      await close(server);
+    }
+  });
+});
+
+describe("rutas inexistentes", () => {
+  it("responde 404 con el envelope de error del contrato", async () => {
+    const { server, baseUrl } = await listen(createApp());
+
+    try {
+      const response = await fetch(`${baseUrl}/api/v1/admin/does-not-exist`);
+
+      expect(response.status).toBe(404);
+      expect(response.headers.get("content-type")).toContain("application/json");
+      expect(await response.json()).toEqual({
+        error: {
+          code: "NOT_FOUND",
+          message: "El recurso solicitado no existe."
+        }
+      });
+    } finally {
+      await close(server);
+    }
+  });
+
+  it("responde 404 tambien fuera del prefijo de la API", async () => {
+    const { server, baseUrl } = await listen(createApp());
+
+    try {
+      const response = await fetch(`${baseUrl}/no-existe`);
+
+      expect(response.status).toBe(404);
+      expect(await response.json()).toEqual({
+        error: {
+          code: "NOT_FOUND",
+          message: "El recurso solicitado no existe."
+        }
+      });
     } finally {
       await close(server);
     }

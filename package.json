@@ -5,14 +5,19 @@
   "description": "Backend del sistema multi-tenant de gestión y reserva de turnos.",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "npm run build && node --watch --env-file-if-exists=.env dist/index.js",
+    "dev:build": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
+    "bootstrap:admin": "node --env-file-if-exists=.env dist/bootstrap/bootstrap-admin.js",
     "build": "tsc -p tsconfig.build.json",
-    "start": "node dist/index.js",
+    "start": "node --env-file-if-exists=.env dist/index.js",
     "typeorm": "tsx ./node_modules/typeorm/cli.js",
     "migration:run": "npm run typeorm -- migration:run -d dist/database/data-source.js",
     "migration:revert": "npm run typeorm -- migration:revert -d dist/database/data-source.js",
     "test": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --runInBand",
     "typecheck": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=22.9.0"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
