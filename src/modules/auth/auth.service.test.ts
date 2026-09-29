@@ -1,7 +1,13 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { User } from "../../database/entities/user.entity.js";
-import { AuthService, JWT_AUDIENCE, JWT_ISSUER } from "./auth.service.js";
+import {
+  AuthService,
+  InvalidCredentialsError,
+  JWT_AUDIENCE,
+  JWT_ISSUER,
+  UserDisabledError
+} from "./auth.service.js";
 import { UserRepository } from "./user.repository.js";
 
 describe("AuthService", () => {
@@ -67,7 +73,7 @@ describe("AuthService", () => {
         email: "admin@example.com",
         password: "wrong-password"
       })
-    ).rejects.toThrow("Credenciales inválidas");
+    ).rejects.toBeInstanceOf(InvalidCredentialsError);
   });
 
   it("rechaza un usuario inexistente", async () => {
@@ -81,7 +87,7 @@ describe("AuthService", () => {
         email: "unknown@example.com",
         password: "password123"
       })
-    ).rejects.toThrow("Credenciales inválidas");
+    ).rejects.toBeInstanceOf(InvalidCredentialsError);
   });
 
   it("rechaza un usuario deshabilitado", async () => {
@@ -97,6 +103,6 @@ describe("AuthService", () => {
         email: "admin@example.com",
         password: "password123"
       })
-    ).rejects.toThrow("Usuario deshabilitado");
+    ).rejects.toBeInstanceOf(UserDisabledError);
   });
 });
