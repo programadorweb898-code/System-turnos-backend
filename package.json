@@ -10,7 +10,7 @@
     "bootstrap:admin": "node --env-file-if-exists=.env dist/bootstrap/bootstrap-admin.js",
     "build": "tsc -p tsconfig.build.json",
     "start": "node --env-file-if-exists=.env dist/index.js",
-    "typeorm": "tsx ./node_modules/typeorm/cli.js",
+    "typeorm": "node --env-file-if-exists=.env ./node_modules/typeorm/cli.js",
     "migration:run": "npm run typeorm -- migration:run -d dist/database/data-source.js",
     "migration:revert": "npm run typeorm -- migration:revert -d dist/database/data-source.js",
     "test": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --runInBand",
