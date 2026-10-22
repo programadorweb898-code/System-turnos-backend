@@ -1,4 +1,7 @@
-import { ConfigurationRepository } from "./configuration.repository.js";
+import {
+  BlockedTimeAppointmentConflictError,
+  ConfigurationRepository
+} from "./configuration.repository.js";
 import {
   BlockedTimeConflictsError,
   ConfigurationService,
@@ -12,7 +15,6 @@ const ENDS_AT = new Date("2026-03-10T16:00:00.000Z");
 function createRepositoryMock() {
   return {
     createBlockedTime: jest.fn().mockResolvedValue({ id: "blocked-1" }),
-    findAppointmentsOverlappingBlockedTime: jest.fn().mockResolvedValue([]),
     findBlockedTimesByTenant: jest.fn().mockResolvedValue([]),
     findEmployeeByTenant: jest.fn().mockResolvedValue({ id: PROFESSIONAL_ID })
   };
@@ -30,12 +32,6 @@ describe("ConfigurationService createBlockedTime", () => {
       reason: "  Capacitación  "
     });
 
-    expect(repository.findAppointmentsOverlappingBlockedTime).toHaveBeenCalledWith(
-      "tenant-1",
-      null,
-      STARTS_AT,
-      ENDS_AT
-    );
     expect(repository.createBlockedTime).toHaveBeenCalledWith(
       "tenant-1",
       STARTS_AT,
@@ -66,14 +62,14 @@ describe("ConfigurationService createBlockedTime", () => {
 
   it("rechaza crear el bloqueo si un turno confirmado se superpone", async () => {
     const repository = createRepositoryMock();
-    repository.findAppointmentsOverlappingBlockedTime.mockResolvedValue([
+    repository.createBlockedTime.mockRejectedValue(new BlockedTimeAppointmentConflictError([
       {
         id: "appointment-1",
         customerName: "Ana Gómez",
         startAt: new Date("2026-03-10T14:30:00.000Z"),
         endAt: new Date("2026-03-10T15:00:00.000Z")
       }
-    ]);
+    ]));
 
     const service = new ConfigurationService(repository as unknown as ConfigurationRepository);
 
@@ -85,12 +81,12 @@ describe("ConfigurationService createBlockedTime", () => {
       })
     ).rejects.toBeInstanceOf(BlockedTimeConflictsError);
 
-    expect(repository.createBlockedTime).not.toHaveBeenCalled();
+    expect(repository.createBlockedTime).toHaveBeenCalledTimes(1);
   });
 
   it("devuelve un detalle por cada turno en conflicto", async () => {
     const repository = createRepositoryMock();
-    repository.findAppointmentsOverlappingBlockedTime.mockResolvedValue([
+    repository.createBlockedTime.mockRejectedValue(new BlockedTimeAppointmentConflictError([
       {
         id: "appointment-1",
         customerName: "Ana Gómez",
@@ -103,7 +99,7 @@ describe("ConfigurationService createBlockedTime", () => {
         startAt: new Date("2026-03-10T15:00:00.000Z"),
         endAt: new Date("2026-03-10T15:30:00.000Z")
       }
-    ]);
+    ]));
 
     const service = new ConfigurationService(repository as unknown as ConfigurationRepository);
 
@@ -123,14 +119,14 @@ describe("ConfigurationService createBlockedTime", () => {
 
   it("no modifica ningún turno cuando hay conflicto", async () => {
     const repository = createRepositoryMock();
-    repository.findAppointmentsOverlappingBlockedTime.mockResolvedValue([
+    repository.createBlockedTime.mockRejectedValue(new BlockedTimeAppointmentConflictError([
       {
         id: "appointment-1",
         customerName: "Ana Gómez",
         startAt: new Date("2026-03-10T14:30:00.000Z"),
         endAt: new Date("2026-03-10T15:00:00.000Z")
       }
-    ]);
+    ]));
 
     const service = new ConfigurationService(repository as unknown as ConfigurationRepository);
 
@@ -162,12 +158,6 @@ describe("ConfigurationService createBlockedTime", () => {
       professionalId: PROFESSIONAL_ID
     });
 
-    expect(repository.findAppointmentsOverlappingBlockedTime).toHaveBeenCalledWith(
-      "tenant-1",
-      PROFESSIONAL_ID,
-      STARTS_AT,
-      ENDS_AT
-    );
     expect(repository.createBlockedTime).toHaveBeenCalledWith(
       "tenant-1",
       STARTS_AT,
@@ -193,7 +183,7 @@ describe("ConfigurationService createBlockedTime", () => {
     ).rejects.toBeInstanceOf(ProfessionalNotFoundError);
 
     expect(repository.createBlockedTime).not.toHaveBeenCalled();
-    expect(repository.findAppointmentsOverlappingBlockedTime).not.toHaveBeenCalled();
+
   });
 
   it("rechaza un intervalo invertido antes de tocar la base de datos", async () => {
@@ -208,6 +198,6 @@ describe("ConfigurationService createBlockedTime", () => {
       })
     ).rejects.toThrow();
 
-    expect(repository.findAppointmentsOverlappingBlockedTime).not.toHaveBeenCalled();
+
   });
 });
