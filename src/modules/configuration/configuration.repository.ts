@@ -61,10 +61,10 @@ export class ConfigurationRepository {
     const query = this.appointments
       .createQueryBuilder("appointment")
       .select([
-        "appointment.id AS id",
-        "appointment.customer_name AS customerName",
-        "appointment.start_at AS startAt",
-        "appointment.end_at AS endAt"
+        'appointment.id AS "id"',
+        'appointment.customer_name AS "customerName"',
+        'appointment.start_at AS "startAt"',
+        'appointment.end_at AS "endAt"'
       ])
       .where("appointment.tenant_id = :tenantId", { tenantId })
       .andWhere("appointment.status IN ('PENDING', 'CONFIRMED')")
