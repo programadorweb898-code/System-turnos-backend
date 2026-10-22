@@ -1,0 +1,42 @@
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn
+} from "typeorm";
+import { Tenant } from "./tenant.entity.js";
+import { UserRole, UserStatus } from "../../modules/auth/auth.constants.js";
+
+@Entity({ name: "users" })
+export class User {
+  @PrimaryGeneratedColumn("uuid")
+  id!: string;
+
+  @Column({ unique: true, length: 255 })
+  email!: string;
+
+  @Column({ name: "password_hash", length: 255 })
+  passwordHash!: string;
+
+  @Column({ name: "role", type: "varchar", length: 20, default: "ADMIN" })
+  role!: UserRole;
+
+  @Column({ name: "status", type: "varchar", length: 20, default: "ACTIVE" })
+  status!: UserStatus;
+
+  @ManyToOne(() => Tenant, { nullable: false, onDelete: "RESTRICT" })
+  @JoinColumn({ name: "tenant_id" })
+  tenant!: Tenant;
+
+  @Column({ name: "tenant_id", type: "uuid" })
+  tenantId!: string;
+
+  @CreateDateColumn({ name: "created_at" })
+  createdAt!: Date;
+
+  @UpdateDateColumn({ name: "updated_at" })
+  updatedAt!: Date;
+}
