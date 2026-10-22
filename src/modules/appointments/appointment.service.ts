@@ -3,6 +3,7 @@ import { Appointment } from "../../database/entities/appointment.entity.js";
 import {
   AppointmentDailyLimitError,
   AppointmentProfessionalBlockedError,
+  AppointmentTenantBlockedError,
   AppointmentRepository
 } from "./appointment.repository.js";
 import { CreateAppointmentInput } from "./appointment.types.js";
@@ -96,6 +97,9 @@ export class AppointmentService {
       }
       if (error instanceof AppointmentDailyLimitError) {
         throw new AppointmentUnavailableError("El negocio alcanzó el límite diario de turnos.");
+      }
+      if (error instanceof AppointmentTenantBlockedError) {
+        throw new AppointmentConflictError("El horario seleccionado está bloqueado.");
       }
       if (error instanceof AppointmentProfessionalBlockedError) {
         throw new AppointmentConflictError("El profesional está bloqueado en el horario seleccionado.");
