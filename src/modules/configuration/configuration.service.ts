@@ -1,5 +1,8 @@
 import { Service } from "../../database/entities/service.entity.js";
-import { ConfigurationRepository } from "./configuration.repository.js";
+import {
+  BlockedTimeAppointmentConflictError,
+  ConfigurationRepository
+} from "./configuration.repository.js";
 import {
   CreateBlockedTimeInput,
   CreateBusinessHourInput,
@@ -88,29 +91,25 @@ export class ConfigurationService {
       }
     }
 
-    const conflicts = await this.repository.findAppointmentsOverlappingBlockedTime(
-      input.tenantId,
-      professionalId,
-      input.startsAt,
-      input.endsAt
-    );
-
-    if (conflicts.length > 0) {
-      throw new BlockedTimeConflictsError(
-        conflicts.map(
-          (conflict) =>
-            `Turno del ${conflict.startAt.toISOString()} al ${conflict.endAt.toISOString()} (${conflict.customerName}).`
-        )
+    try {
+      return await this.repository.createBlockedTime(
+        input.tenantId,
+        input.startsAt,
+        input.endsAt,
+        input.reason?.trim() || null,
+        professionalId
       );
+    } catch (error) {
+      if (error instanceof BlockedTimeAppointmentConflictError) {
+        throw new BlockedTimeConflictsError(
+          error.conflicts.map(
+            (conflict) =>
+              `Turno del ${conflict.startAt.toISOString()} al ${conflict.endAt.toISOString()} (${conflict.customerName}).`
+          )
+        );
+      }
+      throw error;
     }
-
-    return this.repository.createBlockedTime(
-      input.tenantId,
-      input.startsAt,
-      input.endsAt,
-      input.reason?.trim() || null,
-      professionalId
-    );
   }
 
   listServices(tenantId: string) {

@@ -1,4 +1,4 @@
-import { Repository } from "typeorm";
+import { EntityManager, Repository } from "typeorm";
 import { AppDataSource } from "../../database/data-source.js";
 import { Service } from "../../database/entities/service.entity.js";
 import { Employee } from "../../database/entities/employee.entity.js";
@@ -6,6 +6,19 @@ import { BusinessHour } from "../../database/entities/business-hour.entity.js";
 import { BlockedTime } from "../../database/entities/blocked-time.entity.js";
 import { ProfessionalService } from "../../database/entities/professional-service.entity.js";
 import { Appointment } from "../../database/entities/appointment.entity.js";
+
+export interface BlockedTimeAppointmentConflict {
+  id: string;
+  customerName: string;
+  startAt: Date;
+  endAt: Date;
+}
+
+export class BlockedTimeAppointmentConflictError extends Error {
+  constructor(readonly conflicts: BlockedTimeAppointmentConflict[]) {
+    super("Hay turnos confirmados en el intervalo solicitado.");
+  }
+}
 
 export class ConfigurationRepository {
   private readonly services: Repository<Service>;
@@ -54,11 +67,10 @@ export class ConfigurationRepository {
     tenantId: string,
     professionalId: string | null,
     startsAt: Date,
-    endsAt: Date
-  ): Promise<
-    Array<{ id: string; customerName: string; startAt: Date; endAt: Date }>
-  > {
-    const query = this.appointments
+    endsAt: Date,
+    manager: EntityManager = AppDataSource.manager
+  ): Promise<BlockedTimeAppointmentConflict[]> {
+    const query = manager.getRepository(Appointment)
       .createQueryBuilder("appointment")
       .select([
         'appointment.id AS "id"',
@@ -93,9 +105,24 @@ export class ConfigurationRepository {
     reason: string | null,
     professionalId: string | null = null
   ): Promise<BlockedTime> {
-    return this.blockedTimes.save(
-      this.blockedTimes.create({ tenantId, startsAt, endsAt, reason, professionalId })
-    );
+    return AppDataSource.transaction(async (manager) => {
+      // The booking path takes the same lock before checking blocked times.
+      await manager.query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [
+        "booking-and-blocked-time:" + tenantId
+      ]);
+
+      const conflicts = await this.findAppointmentsOverlappingBlockedTime(
+        tenantId, professionalId, startsAt, endsAt, manager
+      );
+      if (conflicts.length > 0) {
+        throw new BlockedTimeAppointmentConflictError(conflicts);
+      }
+
+      const repository = manager.getRepository(BlockedTime);
+      return repository.save(
+        repository.create({ tenantId, startsAt, endsAt, reason, professionalId })
+      );
+    });
   }
 
   findServicesByTenant(tenantId: string): Promise<Service[]> {
