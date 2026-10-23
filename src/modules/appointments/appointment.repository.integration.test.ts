@@ -52,6 +52,7 @@ describe("AppointmentRepository.create", () => {
   });
 
   afterAll(async () => {
+    await AppDataSource.query("DELETE FROM appointment_notification_outbox WHERE tenant_id = $1", [tenantId]);
     await AppDataSource.query(
       "DELETE FROM appointments WHERE tenant_id = $1",
       [tenantId]
