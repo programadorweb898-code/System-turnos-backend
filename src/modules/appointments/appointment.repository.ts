@@ -8,6 +8,7 @@ import { Employee } from "../../database/entities/employee.entity.js";
 import { ProfessionalService } from "../../database/entities/professional-service.entity.js";
 import { Service } from "../../database/entities/service.entity.js";
 import { Tenant } from "../../database/entities/tenant.entity.js";
+import { enqueueAppointmentNotification } from "./appointment.notification-outbox.js";
 
 export class AppointmentDailyLimitError extends Error {}
 export class AppointmentProfessionalBlockedError extends Error {}
@@ -149,6 +150,7 @@ export class AppointmentRepository {
         "INSERT INTO appointment_access_tokens (appointment_id, tenant_id, token_hash, expires_at) VALUES ($1, $2, $3, $4)",
         [appointment.id, input.tenantId, tokenHash, new Date(appointment.startAt.getTime() + 24 * 3_600_000)]
       );
+      await enqueueAppointmentNotification(manager, appointment, "appointment.created");
       return Object.assign(appointment, { managementToken });
     });
   }
