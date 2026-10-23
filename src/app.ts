@@ -9,6 +9,7 @@ import { createTenantRouter } from "./modules/tenant/tenant.routes.js";
 import { createWebsiteIntegrationRouter } from "./modules/website-integrations/website-integration.routes.js";
 import { createPublicRouter } from "./modules/public/public.routes.js";
 import { createAvailabilityRouter } from "./modules/availability/availability.routes.js";
+import { createAppointmentManagementRouter } from "./modules/appointments/appointment.management.routes.js";
 
 export const createApp = () => {
   const app = express();
@@ -52,6 +53,7 @@ export const createApp = () => {
   app.use("/api/v1/auth", createAuthRouter());
   app.use("/api/v1/admin", createTenantRouter());
   app.use("/api/v1/admin", createUserRouter());
+  app.use("/api/v1/admin", createAppointmentManagementRouter());
   app.use("/api/v1/admin/configuration", createConfigurationRouter());
   app.use("/api/v1/admin/website-integrations", createWebsiteIntegrationRouter());
   app.use("/api/v1/public", createPublicRouter());
