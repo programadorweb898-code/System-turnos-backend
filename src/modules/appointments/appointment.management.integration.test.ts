@@ -22,6 +22,9 @@ describe("AppointmentManagementRepository", () => {
 
   async function clearAppointments() {
     await dataSource.query(
+      "DELETE FROM appointment_notification_outbox WHERE tenant_id IN ($1, $2)", [tenantId, otherTenantId]
+    );
+    await dataSource.query(
       "DELETE FROM appointment_changes WHERE tenant_id IN ($1, $2)", [tenantId, otherTenantId]
     );
     await dataSource.query(
@@ -115,6 +118,11 @@ describe("AppointmentManagementRepository", () => {
       [appointment.id, actorId]
     );
     expect(Number(count)).toBe(1);
+    const [{ event_count }] = await dataSource.query(
+      "SELECT COUNT(*)::int AS event_count FROM appointment_notification_outbox WHERE appointment_id = $1 AND event_type = 'appointment.cancelled'",
+      [appointment.id]
+    );
+    expect(Number(event_count)).toBe(1);
     const replacement = await createAppointment(at(2, 10));
     expect(replacement.id).not.toBe(appointment.id);
   });
@@ -140,6 +148,11 @@ describe("AppointmentManagementRepository", () => {
     expect(change.action).toBe("RESCHEDULED");
     expect(change.previous_start_at).toEqual(at(4, 10));
     expect(change.new_start_at).toEqual(at(4, 12));
+    const [{ event_count }] = await dataSource.query(
+      "SELECT COUNT(*)::int AS event_count FROM appointment_notification_outbox WHERE appointment_id = $1 AND event_type = 'appointment.rescheduled'",
+      [appointment.id]
+    );
+    expect(Number(event_count)).toBe(1);
     await createAppointment(at(4, 10));
   });
 
