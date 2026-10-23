@@ -8,6 +8,7 @@ import { ProfessionalService } from "../../database/entities/professional-servic
 import { Service } from "../../database/entities/service.entity.js";
 import { Tenant } from "../../database/entities/tenant.entity.js";
 import { isWithinBusinessHours } from "./appointment.time.js";
+import { enqueueAppointmentNotification } from "./appointment.notification-outbox.js";
 
 export class ManagedAppointmentNotFoundError extends Error {}
 export class ManagedAppointmentStateError extends Error {}
@@ -69,6 +70,7 @@ export class AppointmentManagementRepository {
       appointment.status = "CANCELLED";
       const updated = await manager.getRepository(Appointment).save(appointment);
       await this.recordChange(manager, tenantId, updated.id, actorUserId, "CANCELLED", reason, before, updated);
+      await enqueueAppointmentNotification(manager, updated, "appointment.cancelled");
       await manager.query(
         "UPDATE appointment_access_tokens SET expires_at = LEAST(expires_at, now() + interval '24 hours') WHERE appointment_id = $1",
         [updated.id]
@@ -152,6 +154,7 @@ export class AppointmentManagementRepository {
         appointment.professionalId = professionalId;
         const updated = await manager.getRepository(Appointment).save(appointment);
         await this.recordChange(manager, tenantId, updated.id, actorUserId, "RESCHEDULED", null, before, updated);
+        await enqueueAppointmentNotification(manager, updated, "appointment.rescheduled");
         await manager.query(
           "UPDATE appointment_access_tokens SET expires_at = $2 WHERE appointment_id = $1",
           [updated.id, new Date(updated.startAt.getTime() + 24 * 3_600_000)]
