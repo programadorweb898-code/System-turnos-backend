@@ -12,6 +12,7 @@ describe("AppointmentRepository.create", () => {
   beforeAll(async () => {
     await AppDataSource.initialize();
 
+    await AppDataSource.query("DELETE FROM appointment_notification_outbox WHERE tenant_id = $1", [tenantId]);
     await AppDataSource.query(
       "DELETE FROM appointments WHERE tenant_id = $1",
       [tenantId]
@@ -126,6 +127,11 @@ describe("AppointmentRepository.create", () => {
     );
     expect(token_hash).toBe(createHash("sha256").update(created.value.managementToken).digest("hex"));
     expect(Number(stored_count)).toBe(1);
+    const [{ count: event_count }] = await AppDataSource.query(
+      "SELECT COUNT(*)::int AS count FROM appointment_notification_outbox WHERE appointment_id = $1 AND event_type = 'appointment.created'",
+      [created.value.id]
+    );
+    expect(Number(event_count)).toBe(1);
   });
 
   it("rejects an appointment when the professional is blocked", async () => {
