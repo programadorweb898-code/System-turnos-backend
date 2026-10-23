@@ -1,4 +1,5 @@
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
+import { PublicAppointmentManagementController } from "../public/public-appointment-management.routes.js";
 import { DataSource } from "typeorm";
 import { AppDataSource } from "../../database/data-source.js";
 import { Appointment } from "../../database/entities/appointment.entity.js";
@@ -220,5 +221,41 @@ describe("AppointmentManagementRepository", () => {
     await expect(repository.cancel(tenantId, appointment.id, null, null, tokenHash))
       .rejects.toBeInstanceOf(ManagedAppointmentNotFoundError);
     expect((await appointmentRepo().findOneByOrFail({ id: appointment.id })).status).toBe("CONFIRMED");
+  });
+
+  it("returns only minimal details for the matching private token", async () => {
+    const appointment = await createAppointment(at(9, 10));
+    const token = randomBytes(32).toString("base64url");
+    const tokenHash = createHash("sha256").update(token).digest("hex");
+    await dataSource.query(
+      "INSERT INTO appointment_access_tokens (appointment_id, tenant_id, token_hash, expires_at) VALUES ($1, $2, $3, $4)",
+      [appointment.id, tenantId, tokenHash, new Date(at(9, 10).getTime() + 24 * 3_600_000)]
+    );
+    const controller = new PublicAppointmentManagementController(dataSource);
+    const makeResponse = () => {
+      const res = { status: jest.fn(), json: jest.fn(), setHeader: jest.fn() };
+      res.status.mockReturnValue(res);
+      return res;
+    };
+    const allowed = makeResponse();
+    await controller.get({
+      params: { id: appointment.id },
+      header: () => "Bearer " + token
+    } as never, allowed as never);
+    expect(allowed.status).toHaveBeenCalledWith(200);
+    const body = allowed.json.mock.calls[0][0];
+    expect(body).toMatchObject({ id: appointment.id, status: "CONFIRMED", serviceName: "Corte" });
+    expect(body.customerPhone).toBeUndefined();
+    expect(body.customerName).toBeUndefined();
+    expect(body.customerNotes).toBeUndefined();
+    expect(allowed.setHeader).toHaveBeenCalledWith("Cache-Control", "no-store");
+
+    const denied = makeResponse();
+    await controller.get({
+      params: { id: appointment.id },
+      header: () => "Bearer " + randomBytes(32).toString("base64url")
+    } as never, denied as never);
+    expect(denied.status).toHaveBeenCalledWith(404);
+    expect(denied.json.mock.calls[0][0].error.code).toBe("APPOINTMENT_NOT_FOUND");
   });
 });
