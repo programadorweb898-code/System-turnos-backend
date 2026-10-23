@@ -95,6 +95,7 @@ describe("AppointmentManagementRepository", () => {
     await dataSource.query("DELETE FROM business_hours WHERE tenant_id = $1", [tenantId]);
     await dataSource.query("DELETE FROM services WHERE tenant_id = $1", [tenantId]);
     await dataSource.query("DELETE FROM employees WHERE tenant_id = $1", [tenantId]);
+    await dataSource.query("DELETE FROM website_integrations WHERE tenant_id = $1", [tenantId]);
     await dataSource.query("DELETE FROM tenants WHERE id IN ($1, $2)", [tenantId, otherTenantId]);
     await dataSource.destroy();
   });
