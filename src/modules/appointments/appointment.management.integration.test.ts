@@ -1,3 +1,4 @@
+import { DataSource } from "typeorm";
 import { AppDataSource } from "../../database/data-source.js";
 import { Appointment } from "../../database/entities/appointment.entity.js";
 import {
@@ -13,18 +14,19 @@ describe("AppointmentManagementRepository", () => {
   const serviceId = "b1111111-1111-4111-8111-111111111111";
   const professionalId = "c1111111-1111-4111-8111-111111111111";
   const actorId = "d1111111-1111-4111-8111-111111111111";
-  const repository = new AppointmentManagementRepository(AppDataSource);
-  const appointmentRepo = () => AppDataSource.getRepository(Appointment);
+  const dataSource = new DataSource({ ...AppDataSource.options, migrations: [] });
+  const repository = new AppointmentManagementRepository(dataSource);
+  const appointmentRepo = () => dataSource.getRepository(Appointment);
   const at = (day: number, hour: number) => new Date(`2099-10-${String(day).padStart(2, "0")}T${String(hour).padStart(2, "0")}:00:00.000Z`);
 
   async function clearAppointments() {
-    await AppDataSource.query(
+    await dataSource.query(
       "DELETE FROM appointment_changes WHERE tenant_id IN ($1, $2)", [tenantId, otherTenantId]
     );
-    await AppDataSource.query(
+    await dataSource.query(
       "DELETE FROM appointments WHERE tenant_id IN ($1, $2)", [tenantId, otherTenantId]
     );
-    await AppDataSource.query(
+    await dataSource.query(
       "DELETE FROM blocked_times WHERE tenant_id IN ($1, $2)", [tenantId, otherTenantId]
     );
   }
@@ -38,36 +40,36 @@ describe("AppointmentManagementRepository", () => {
   }
 
   beforeAll(async () => {
-    await AppDataSource.initialize();
+    await dataSource.initialize();
     await clearAppointments();
-    await AppDataSource.query(
+    await dataSource.query(
       "DELETE FROM professional_services WHERE tenant_id = $1", [tenantId]
     );
-    await AppDataSource.query("DELETE FROM business_hours WHERE tenant_id = $1", [tenantId]);
-    await AppDataSource.query("DELETE FROM services WHERE tenant_id = $1", [tenantId]);
-    await AppDataSource.query("DELETE FROM employees WHERE tenant_id = $1", [tenantId]);
-    await AppDataSource.query("DELETE FROM tenants WHERE id IN ($1, $2)", [tenantId, otherTenantId]);
+    await dataSource.query("DELETE FROM business_hours WHERE tenant_id = $1", [tenantId]);
+    await dataSource.query("DELETE FROM services WHERE tenant_id = $1", [tenantId]);
+    await dataSource.query("DELETE FROM employees WHERE tenant_id = $1", [tenantId]);
+    await dataSource.query("DELETE FROM tenants WHERE id IN ($1, $2)", [tenantId, otherTenantId]);
 
-    await AppDataSource.query(
+    await dataSource.query(
       `INSERT INTO tenants (id, name, slug, timezone, status, max_daily_appointments)
        VALUES ($1, 'Management test', 'management-test', 'UTC', 'published', 5),
               ($2, 'Other management test', 'other-management-test', 'UTC', 'published', 5)`,
       [tenantId, otherTenantId]
     );
-    await AppDataSource.query(
+    await dataSource.query(
       "INSERT INTO services (id, tenant_id, name, duration, status) VALUES ($1, $2, 'Corte', 30, 'active')",
       [serviceId, tenantId]
     );
-    await AppDataSource.query(
+    await dataSource.query(
       "INSERT INTO employees (id, tenant_id, name, status) VALUES ($1, $2, 'Profesional', 'active')",
       [professionalId, tenantId]
     );
-    await AppDataSource.query(
+    await dataSource.query(
       "INSERT INTO professional_services (tenant_id, professional_id, service_id) VALUES ($1, $2, $3)",
       [tenantId, professionalId, serviceId]
     );
     for (let day = 0; day < 7; day++) {
-      await AppDataSource.query(
+      await dataSource.query(
         "INSERT INTO business_hours (tenant_id, day_of_week, start_time, end_time) VALUES ($1, $2, '09:00', '17:00')",
         [tenantId, day]
       );
@@ -78,12 +80,12 @@ describe("AppointmentManagementRepository", () => {
 
   afterAll(async () => {
     await clearAppointments();
-    await AppDataSource.query("DELETE FROM professional_services WHERE tenant_id = $1", [tenantId]);
-    await AppDataSource.query("DELETE FROM business_hours WHERE tenant_id = $1", [tenantId]);
-    await AppDataSource.query("DELETE FROM services WHERE tenant_id = $1", [tenantId]);
-    await AppDataSource.query("DELETE FROM employees WHERE tenant_id = $1", [tenantId]);
-    await AppDataSource.query("DELETE FROM tenants WHERE id IN ($1, $2)", [tenantId, otherTenantId]);
-    await AppDataSource.destroy();
+    await dataSource.query("DELETE FROM professional_services WHERE tenant_id = $1", [tenantId]);
+    await dataSource.query("DELETE FROM business_hours WHERE tenant_id = $1", [tenantId]);
+    await dataSource.query("DELETE FROM services WHERE tenant_id = $1", [tenantId]);
+    await dataSource.query("DELETE FROM employees WHERE tenant_id = $1", [tenantId]);
+    await dataSource.query("DELETE FROM tenants WHERE id IN ($1, $2)", [tenantId, otherTenantId]);
+    await dataSource.destroy();
   });
 
   it("lists only the tenant's appointments and filters by status", async () => {
@@ -107,7 +109,7 @@ describe("AppointmentManagementRepository", () => {
     const second = await repository.cancel(tenantId, appointment.id, actorId, "Reintento");
     expect(first.status).toBe("CANCELLED");
     expect(second.status).toBe("CANCELLED");
-    const [{ count }] = await AppDataSource.query(
+    const [{ count }] = await dataSource.query(
       "SELECT COUNT(*)::int AS count FROM appointment_changes WHERE appointment_id = $1 AND actor_user_id = $2 AND action = 'CANCELLED'",
       [appointment.id, actorId]
     );
@@ -130,7 +132,7 @@ describe("AppointmentManagementRepository", () => {
     expect(updated.id).toBe(appointment.id);
     expect(updated.startAt).toEqual(at(4, 12));
     expect(updated.endAt).toEqual(new Date(at(4, 12).getTime() + 30 * 60_000));
-    const [change] = await AppDataSource.query(
+    const [change] = await dataSource.query(
       "SELECT action, previous_start_at, new_start_at FROM appointment_changes WHERE appointment_id = $1",
       [appointment.id]
     );
@@ -145,14 +147,14 @@ describe("AppointmentManagementRepository", () => {
     await createAppointment(at(5, 12));
     await expect(repository.reschedule(tenantId, appointment.id, actorId, at(5, 12)))
       .rejects.toBeInstanceOf(ManagedAppointmentUnavailableError);
-    await AppDataSource.query(
+    await dataSource.query(
       "INSERT INTO blocked_times (tenant_id, professional_id, starts_at, ends_at, reason) VALUES ($1, $2, $3, $4, 'Pausa')",
       [tenantId, professionalId, at(5, 13), at(5, 14)]
     );
     await expect(repository.reschedule(tenantId, appointment.id, actorId, at(5, 13)))
       .rejects.toBeInstanceOf(ManagedAppointmentUnavailableError);
     expect((await appointmentRepo().findOneByOrFail({ id: appointment.id })).startAt).toEqual(at(5, 10));
-    const [{ count }] = await AppDataSource.query(
+    const [{ count }] = await dataSource.query(
       "SELECT COUNT(*)::int AS count FROM appointment_changes WHERE appointment_id = $1", [appointment.id]
     );
     expect(Number(count)).toBe(0);
