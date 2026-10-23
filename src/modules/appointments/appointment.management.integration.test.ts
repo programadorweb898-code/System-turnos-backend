@@ -14,6 +14,7 @@ describe("AppointmentManagementRepository", () => {
   const tenantId = "a1111111-1111-4111-8111-111111111111";
   const otherTenantId = "a2222222-2222-4222-8222-222222222222";
   const serviceId = "b1111111-1111-4111-8111-111111111111";
+  const publicKey = "pk_management_integration_test";
   const professionalId = "c1111111-1111-4111-8111-111111111111";
   const actorId = "d1111111-1111-4111-8111-111111111111";
   const dataSource = new DataSource({ ...AppDataSource.options, migrations: [] });
@@ -53,6 +54,7 @@ describe("AppointmentManagementRepository", () => {
     await dataSource.query("DELETE FROM business_hours WHERE tenant_id = $1", [tenantId]);
     await dataSource.query("DELETE FROM services WHERE tenant_id = $1", [tenantId]);
     await dataSource.query("DELETE FROM employees WHERE tenant_id = $1", [tenantId]);
+    await dataSource.query("DELETE FROM website_integrations WHERE tenant_id = $1", [tenantId]);
     await dataSource.query("DELETE FROM tenants WHERE id IN ($1, $2)", [tenantId, otherTenantId]);
 
     await dataSource.query(
@@ -60,6 +62,10 @@ describe("AppointmentManagementRepository", () => {
        VALUES ($1, 'Management test', 'management-test', 'UTC', 'published', 5),
               ($2, 'Other management test', 'other-management-test', 'UTC', 'published', 5)`,
       [tenantId, otherTenantId]
+    );
+    await dataSource.query(
+      "INSERT INTO website_integrations (tenant_id, domain, public_key, verification_token, verification_status, integration_status) VALUES ($1, 'management-test.example', $2, 'test-token', 'VERIFIED', 'CONNECTED')",
+      [tenantId, publicKey]
     );
     await dataSource.query(
       "INSERT INTO services (id, tenant_id, name, duration, status) VALUES ($1, $2, 'Corte', 30, 'active')",
@@ -239,7 +245,7 @@ describe("AppointmentManagementRepository", () => {
     };
     const allowed = makeResponse();
     await controller.get({
-      params: { id: appointment.id },
+      params: { id: appointment.id, publicKey },
       header: () => "Bearer " + token
     } as never, allowed as never);
     expect(allowed.status).toHaveBeenCalledWith(200);
