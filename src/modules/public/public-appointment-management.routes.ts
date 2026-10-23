@@ -153,9 +153,8 @@ export function createPublicAppointmentManagementRouter(
   controller = new PublicAppointmentManagementController()
 ): Router {
   const router = Router({ mergeParams: true });
-  router.use(publicAppointmentRateLimiter);
-  router.get("/:id", controller.get);
-  router.post("/:id/cancel", controller.cancel);
-  router.post("/:id/reschedule", controller.reschedule);
+  router.get("/:id", publicAppointmentRateLimiter, controller.get);
+  router.post("/:id/cancel", publicAppointmentRateLimiter, controller.cancel);
+  router.post("/:id/reschedule", publicAppointmentRateLimiter, controller.reschedule);
   return router;
 }
