@@ -32,30 +32,32 @@ export class PublicAppointmentManagementController {
     this.management = new AppointmentManagementRepository(dataSource);
   }
 
-  private async find(id: string, tokenHash: string): Promise<PublicAppointment> {
+  private async find(id: string, tokenHash: string, publicKey: string): Promise<PublicAppointment> {
     const rows: PublicAppointment[] = await this.dataSource.query(
       `SELECT a.id, t.name AS "tenantName", s.name AS "serviceName",
               e.name AS "professionalName", a.start_at AS "startAt",
               a.end_at AS "endAt", a.status
        FROM appointment_access_tokens access
        JOIN appointments a ON a.id = access.appointment_id AND a.tenant_id = access.tenant_id
+       JOIN website_integrations wi ON wi.tenant_id = a.tenant_id AND wi.public_key = $3
        JOIN tenants t ON t.id = a.tenant_id
        JOIN services s ON s.id = a.service_id AND s.tenant_id = a.tenant_id
        JOIN employees e ON e.id = a.professional_id AND e.tenant_id = a.tenant_id
        WHERE a.id = $1 AND access.token_hash = $2
          AND access.revoked_at IS NULL AND access.expires_at > now()`,
-      [id, tokenHash]
+      [id, tokenHash, publicKey]
     );
     if (rows.length !== 1) throw new ManagedAppointmentNotFoundError("El turno no existe.");
     return rows[0];
   }
 
-  private async tenantId(id: string, tokenHash: string): Promise<string> {
+  private async tenantId(id: string, tokenHash: string, publicKey: string): Promise<string> {
     const rows: Array<{ tenant_id: string }> = await this.dataSource.query(
-      `SELECT tenant_id FROM appointment_access_tokens
-       WHERE appointment_id = $1 AND token_hash = $2
-         AND revoked_at IS NULL AND expires_at > now()`,
-      [id, tokenHash]
+      `SELECT access.tenant_id FROM appointment_access_tokens access
+       JOIN website_integrations wi ON wi.tenant_id = access.tenant_id AND wi.public_key = $3
+       WHERE access.appointment_id = $1 AND access.token_hash = $2
+         AND access.revoked_at IS NULL AND access.expires_at > now()`,
+      [id, tokenHash, publicKey]
     );
     if (rows.length !== 1) throw new ManagedAppointmentNotFoundError("El turno no existe.");
     return rows[0].tenant_id;
@@ -101,7 +103,7 @@ export class PublicAppointmentManagementController {
     const credentials = this.credentials(req, res);
     if (!credentials) return;
     try {
-      res.status(200).json(await this.find(credentials.id, credentials.tokenHash));
+      res.status(200).json(await this.find(credentials.id, credentials.tokenHash, String(req.params.publicKey)));
     } catch (error) {
       if (!this.respondError(res, error)) throw error;
     }
@@ -117,7 +119,7 @@ export class PublicAppointmentManagementController {
       return;
     }
     try {
-      const tenantId = await this.tenantId(credentials.id, credentials.tokenHash);
+      const tenantId = await this.tenantId(credentials.id, credentials.tokenHash, String(req.params.publicKey));
       await this.management.cancel(tenantId, credentials.id, null, parsed.data.reason || null, credentials.tokenHash);
       res.status(200).json(await this.find(credentials.id, credentials.tokenHash));
     } catch (error) {
@@ -150,7 +152,7 @@ export class PublicAppointmentManagementController {
 export function createPublicAppointmentManagementRouter(
   controller = new PublicAppointmentManagementController()
 ): Router {
-  const router = Router();
+  const router = Router({ mergeParams: true });
   router.use(publicAppointmentRateLimiter);
   router.get("/:id", controller.get);
   router.post("/:id/cancel", controller.cancel);
