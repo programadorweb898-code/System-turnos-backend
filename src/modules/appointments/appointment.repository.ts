@@ -10,6 +10,7 @@ import { Tenant } from "../../database/entities/tenant.entity.js";
 
 export class AppointmentDailyLimitError extends Error {}
 export class AppointmentProfessionalBlockedError extends Error {}
+export class AppointmentTenantBlockedError extends Error {}
 
 export interface AppointmentCreationContext {
   tenant: Tenant;
@@ -96,6 +97,11 @@ export class AppointmentRepository {
     return this.dataSource.transaction(async (manager) => {
       const repository = manager.getRepository(Appointment);
 
+      // Serialize bookings and blocked-time creation for the same tenant.
+      await manager.query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [
+        "booking-and-blocked-time:" + input.tenantId
+      ]);
+
       await manager.query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [
         this.getDailyLimitLockKey(input.tenantId, input.startAt, input.timezone)
       ]);
@@ -103,6 +109,19 @@ export class AppointmentRepository {
       const dailyAppointments = await this.countAppointmentsForLocalDate(manager, input.tenantId, input.startAt, input.timezone);
       if (dailyAppointments >= input.maxDailyAppointments) {
         throw new AppointmentDailyLimitError("El negocio alcanzó el límite diario de turnos.");
+      }
+
+      const tenantBlocked = await manager
+        .getRepository(BlockedTime)
+        .createQueryBuilder("blocked")
+        .where("blocked.tenant_id = :tenantId", { tenantId: input.tenantId })
+        .andWhere("blocked.professional_id IS NULL")
+        .andWhere("blocked.starts_at < :endAt", { endAt: input.endAt })
+        .andWhere("blocked.ends_at > :startAt", { startAt: input.startAt })
+        .getExists();
+
+      if (tenantBlocked) {
+        throw new AppointmentTenantBlockedError("El horario seleccionado está bloqueado.");
       }
 
       const professionalBlocked = await manager

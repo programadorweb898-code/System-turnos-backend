@@ -1,6 +1,7 @@
 import { AppDataSource } from "../../database/data-source.js";
 import { AppointmentRepository } from "./appointment.repository.js";
 import { ConfigurationRepository } from "../configuration/configuration.repository.js";
+import { ConfigurationService } from "../configuration/configuration.service.js";
 
 describe("AppointmentRepository.create", () => {
   const tenantId = "11111111-1111-4111-8111-111111111111";
@@ -185,5 +186,52 @@ describe("AppointmentRepository.create", () => {
       startAt: appointmentStart,
       endAt: appointmentEnd
     });
+  });
+  it.each([
+    { scope: "professional", professionalIdForBlock: professionalId, day: "01" },
+    { scope: "tenant", professionalIdForBlock: null, day: "02" }
+  ])("never confirms an overlapping booking and $scope block concurrently", async ({
+    professionalIdForBlock,
+    day
+  }) => {
+    const bookingRepository = new AppointmentRepository(AppDataSource);
+    const configurationService = new ConfigurationService();
+    const startAt = new Date(`2099-12-${day}T12:00:00.000Z`);
+    const endAt = new Date(startAt.getTime() + 30 * 60_000);
+
+    const results = await Promise.allSettled([
+      bookingRepository.create({
+        tenantId,
+        customerName: "Concurrent customer",
+        customerPhone: "+5491100000030",
+        customerNotes: null,
+        serviceId,
+        professionalId,
+        startAt,
+        endAt,
+        timezone: "UTC",
+        maxDailyAppointments: 1
+      }),
+      configurationService.createBlockedTime({
+        tenantId,
+        professionalId: professionalIdForBlock,
+        startsAt: startAt,
+        endsAt: endAt
+      })
+    ]);
+
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+    expect(results.filter((result) => result.status === "rejected")).toHaveLength(1);
+
+    const [{ count: bookingCount }] = await AppDataSource.query(
+      "SELECT COUNT(*)::int AS count FROM appointments WHERE tenant_id = $1 AND start_at = $2",
+      [tenantId, startAt]
+    );
+    const [{ count: blockCount }] = await AppDataSource.query(
+      "SELECT COUNT(*)::int AS count FROM blocked_times WHERE tenant_id = $1 AND starts_at = $2",
+      [tenantId, startAt]
+    );
+
+    expect(Number(bookingCount) + Number(blockCount)).toBe(1);
   });
 });
