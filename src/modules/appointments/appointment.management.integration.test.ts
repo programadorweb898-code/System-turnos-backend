@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { DataSource } from "typeorm";
 import { AppDataSource } from "../../database/data-source.js";
 import { Appointment } from "../../database/entities/appointment.entity.js";
@@ -166,5 +167,45 @@ describe("AppointmentManagementRepository", () => {
       .rejects.toBeInstanceOf(ManagedAppointmentStateError);
     await expect(repository.reschedule(tenantId, appointment.id, actorId, at(6, 12)))
       .rejects.toBeInstanceOf(ManagedAppointmentStateError);
+  });
+
+  it("allows a client token to cancel once and records CLIENT without an admin user", async () => {
+    const appointment = await createAppointment(at(7, 10));
+    const tokenHash = createHash("sha256").update("private-test-token").digest("hex");
+    await dataSource.query(
+      "INSERT INTO appointment_access_tokens (appointment_id, tenant_id, token_hash, expires_at) VALUES ($1, $2, $3, $4)",
+      [appointment.id, tenantId, tokenHash, new Date(at(7, 10).getTime() + 24 * 3_600_000)]
+    );
+    await repository.cancel(tenantId, appointment.id, null, null, tokenHash);
+    await repository.cancel(tenantId, appointment.id, null, null, tokenHash);
+    const changes = await dataSource.query(
+      "SELECT actor_type, actor_user_id FROM appointment_changes WHERE appointment_id = $1",
+      [appointment.id]
+    );
+    expect(changes).toEqual([{ actor_type: "CLIENT", actor_user_id: null }]);
+  });
+
+  it("rejects invalid, revoked and expired client tokens without modifying the turn", async () => {
+    const appointment = await createAppointment(at(8, 10));
+    const tokenHash = createHash("sha256").update("another-private-token").digest("hex");
+    await dataSource.query(
+      "INSERT INTO appointment_access_tokens (appointment_id, tenant_id, token_hash, expires_at) VALUES ($1, $2, $3, $4)",
+      [appointment.id, tenantId, tokenHash, new Date(at(8, 10).getTime() + 24 * 3_600_000)]
+    );
+    await expect(repository.cancel(tenantId, appointment.id, null, null, "invalid"))
+      .rejects.toBeInstanceOf(ManagedAppointmentNotFoundError);
+    await dataSource.query(
+      "UPDATE appointment_access_tokens SET revoked_at = now() WHERE appointment_id = $1",
+      [appointment.id]
+    );
+    await expect(repository.reschedule(tenantId, appointment.id, null, at(8, 12), undefined, tokenHash))
+      .rejects.toBeInstanceOf(ManagedAppointmentNotFoundError);
+    await dataSource.query(
+      "UPDATE appointment_access_tokens SET revoked_at = NULL, expires_at = now() - interval '1 second' WHERE appointment_id = $1",
+      [appointment.id]
+    );
+    await expect(repository.cancel(tenantId, appointment.id, null, null, tokenHash))
+      .rejects.toBeInstanceOf(ManagedAppointmentNotFoundError);
+    expect((await appointmentRepo().findOneByOrFail({ id: appointment.id })).status).toBe("CONFIRMED");
   });
 });
