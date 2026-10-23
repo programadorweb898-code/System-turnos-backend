@@ -121,7 +121,7 @@ export class PublicAppointmentManagementController {
     try {
       const tenantId = await this.tenantId(credentials.id, credentials.tokenHash, String(req.params.publicKey));
       await this.management.cancel(tenantId, credentials.id, null, parsed.data.reason || null, credentials.tokenHash);
-      res.status(200).json(await this.find(credentials.id, credentials.tokenHash));
+      res.status(200).json(await this.find(credentials.id, credentials.tokenHash, String(req.params.publicKey)));
     } catch (error) {
       if (!this.respondError(res, error)) throw error;
     }
@@ -137,12 +137,12 @@ export class PublicAppointmentManagementController {
       return;
     }
     try {
-      const tenantId = await this.tenantId(credentials.id, credentials.tokenHash);
+      const tenantId = await this.tenantId(credentials.id, credentials.tokenHash, String(req.params.publicKey));
       await this.management.reschedule(
         tenantId, credentials.id, null, new Date(parsed.data.startAt),
         parsed.data.professionalId, credentials.tokenHash
       );
-      res.status(200).json(await this.find(credentials.id, credentials.tokenHash));
+      res.status(200).json(await this.find(credentials.id, credentials.tokenHash, String(req.params.publicKey)));
     } catch (error) {
       if (!this.respondError(res, error)) throw error;
     }
