@@ -53,12 +53,14 @@ export class AppointmentManagementRepository {
   async cancel(
     tenantId: string,
     appointmentId: string,
-    actorUserId: string,
-    reason: string | null
+    actorUserId: string | null,
+    reason: string | null,
+    tokenHash?: string
   ): Promise<Appointment> {
     return this.dataSource.transaction(async (manager) => {
       await this.lockTenant(manager, tenantId);
       const appointment = await this.findForUpdate(manager, tenantId, appointmentId);
+      if (tokenHash) await this.authorizeToken(manager, tenantId, appointmentId, tokenHash);
 
       if (appointment.status === "CANCELLED") return appointment;
       this.requireFutureActiveAppointment(appointment);
@@ -67,6 +69,10 @@ export class AppointmentManagementRepository {
       appointment.status = "CANCELLED";
       const updated = await manager.getRepository(Appointment).save(appointment);
       await this.recordChange(manager, tenantId, updated.id, actorUserId, "CANCELLED", reason, before, updated);
+      await manager.query(
+        "UPDATE appointment_access_tokens SET expires_at = LEAST(expires_at, now() + interval '24 hours') WHERE appointment_id = $1",
+        [updated.id]
+      );
       return updated;
     });
   }
@@ -74,14 +80,16 @@ export class AppointmentManagementRepository {
   async reschedule(
     tenantId: string,
     appointmentId: string,
-    actorUserId: string,
+    actorUserId: string | null,
     startAt: Date,
-    requestedProfessionalId?: string
+    requestedProfessionalId?: string,
+    tokenHash?: string
   ): Promise<Appointment> {
     try {
       return await this.dataSource.transaction(async (manager) => {
         await this.lockTenant(manager, tenantId);
         const appointment = await this.findForUpdate(manager, tenantId, appointmentId);
+        if (tokenHash) await this.authorizeToken(manager, tenantId, appointmentId, tokenHash);
         this.requireFutureActiveAppointment(appointment);
 
         const professionalId = requestedProfessionalId ?? appointment.professionalId;
@@ -144,6 +152,10 @@ export class AppointmentManagementRepository {
         appointment.professionalId = professionalId;
         const updated = await manager.getRepository(Appointment).save(appointment);
         await this.recordChange(manager, tenantId, updated.id, actorUserId, "RESCHEDULED", null, before, updated);
+        await manager.query(
+          "UPDATE appointment_access_tokens SET expires_at = $2 WHERE appointment_id = $1",
+          [updated.id, new Date(updated.startAt.getTime() + 24 * 3_600_000)]
+        );
         return updated;
       });
     } catch (error) {
@@ -152,6 +164,18 @@ export class AppointmentManagementRepository {
       }
       throw error;
     }
+  }
+
+  private async authorizeToken(
+    manager: EntityManager, tenantId: string, appointmentId: string, tokenHash: string
+  ): Promise<void> {
+    const rows: Array<{ appointment_id: string }> = await manager.query(
+      `SELECT appointment_id FROM appointment_access_tokens
+       WHERE appointment_id = $1 AND tenant_id = $2 AND token_hash = $3
+         AND revoked_at IS NULL AND expires_at > now() FOR UPDATE`,
+      [appointmentId, tenantId, tokenHash]
+    );
+    if (rows.length !== 1) throw new ManagedAppointmentNotFoundError("El turno no existe.");
   }
 
   private async lockTenant(manager: EntityManager, tenantId: string): Promise<void> {
@@ -196,7 +220,7 @@ export class AppointmentManagementRepository {
     manager: EntityManager,
     tenantId: string,
     appointmentId: string,
-    actorUserId: string,
+    actorUserId: string | null,
     action: "CANCELLED" | "RESCHEDULED",
     reason: string | null,
     before: ReturnType<AppointmentManagementRepository["snapshot"]>,
@@ -204,12 +228,12 @@ export class AppointmentManagementRepository {
   ): Promise<void> {
     await manager.query(
       `INSERT INTO appointment_changes (
-        tenant_id, appointment_id, actor_user_id, action, reason,
+        tenant_id, appointment_id, actor_user_id, actor_type, action, reason,
         previous_status, new_status, previous_start_at, previous_end_at,
         new_start_at, new_end_at, previous_professional_id, new_professional_id
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
       [
-        tenantId, appointmentId, actorUserId, action, reason,
+        tenantId, appointmentId, actorUserId, actorUserId ? "ADMIN" : "CLIENT", action, reason,
         before.status, after.status, before.startAt, before.endAt,
         after.startAt, after.endAt, before.professionalId, after.professionalId
       ]
