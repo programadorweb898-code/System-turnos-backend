@@ -1,3 +1,4 @@
+import { createHash, randomBytes } from "node:crypto";
 import { DataSource, EntityManager } from "typeorm";
 import { AppDataSource } from "../../database/data-source.js";
 import { Appointment } from "../../database/entities/appointment.entity.js";
@@ -93,7 +94,7 @@ export class AppointmentRepository {
     tenantId: string; customerName: string; customerPhone: string; customerNotes: string | null;
     serviceId: string; professionalId: string; startAt: Date; endAt: Date; timezone: string;
     maxDailyAppointments: number;
-  }): Promise<Appointment> {
+  }): Promise<Appointment & { managementToken: string }> {
     return this.dataSource.transaction(async (manager) => {
       const repository = manager.getRepository(Appointment);
 
@@ -137,11 +138,18 @@ export class AppointmentRepository {
         throw new AppointmentProfessionalBlockedError("El profesional está bloqueado en el horario seleccionado.");
       }
 
-      return repository.save(repository.create({
+      const appointment = await repository.save(repository.create({
         tenantId: input.tenantId, customerName: input.customerName, customerPhone: input.customerPhone,
         customerNotes: input.customerNotes, serviceId: input.serviceId, professionalId: input.professionalId,
         startAt: input.startAt, endAt: input.endAt, status: "CONFIRMED"
       }));
+      const managementToken = randomBytes(32).toString("base64url");
+      const tokenHash = createHash("sha256").update(managementToken).digest("hex");
+      await manager.query(
+        "INSERT INTO appointment_access_tokens (appointment_id, tenant_id, token_hash, expires_at) VALUES ($1, $2, $3, $4)",
+        [appointment.id, input.tenantId, tokenHash, new Date(appointment.startAt.getTime() + 24 * 3_600_000)]
+      );
+      return Object.assign(appointment, { managementToken });
     });
   }
 
