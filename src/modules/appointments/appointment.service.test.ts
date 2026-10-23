@@ -83,8 +83,9 @@ describe("AppointmentService.create", () => {
       professionalId: "00000000-0000-4000-8000-000000000003",
       startAt: new Date("2099-10-01T12:00:00.000Z"),
       endAt: new Date("2099-10-01T12:30:00.000Z"),
-      status: "CONFIRMED"
-    } as Appointment);
+      status: "CONFIRMED",
+      managementToken: "test-private-token"
+    } as Appointment & { managementToken: string });
 
     const service = new AppointmentService(repository as unknown as AppointmentRepository);
 

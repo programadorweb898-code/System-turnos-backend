@@ -17,7 +17,7 @@ export class AppointmentUnavailableError extends Error {}
 export class AppointmentService {
   constructor(private readonly repository = new AppointmentRepository()) {}
 
-  async create(input: CreateAppointmentInput): Promise<Appointment> {
+  async create(input: CreateAppointmentInput): Promise<Appointment & { managementToken: string }> {
     validateCreateAppointmentInput(input);
 
     const startAt = input.startAt;

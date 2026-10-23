@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { publicAppointmentRateLimiter } from "../../middleware/rate-limit.js";
 import { PublicController } from "./public.controller.js";
+import { createPublicAppointmentManagementRouter } from "./public-appointment-management.routes.js";
 import { createPublicCorsMiddleware } from "./public-cors.middleware.js";
 
 export const createPublicRouter = (
@@ -13,6 +14,7 @@ export const createPublicRouter = (
   router.get("/sites/:publicKey", controller.getSite);
   router.get("/sites/:publicKey/services", controller.listServices);
   router.get("/sites/:publicKey/availability", controller.getAvailability);
+  router.use("/sites/:publicKey/appointments", createPublicAppointmentManagementRouter());
   router.post(
     "/sites/:publicKey/appointments",
     publicAppointmentRateLimiter,

@@ -9,7 +9,8 @@ import { PublicController } from "./public.controller.js";
 function createResponseMock() {
   const res = {
     status: jest.fn(),
-    json: jest.fn()
+    json: jest.fn(),
+    setHeader: jest.fn()
   };
 
   res.status.mockReturnValue(res);
@@ -27,6 +28,7 @@ describe("PublicController appointment creation", () => {
     const service = createServiceMock();
     service.createAppointment.mockResolvedValue({
       id: "appointment-1",
+      managementToken: "test-private-token",
       serviceId: "service-1",
       professionalId: "professional-1",
       startAt: new Date("2026-10-01T12:00:00.000Z"),
@@ -60,8 +62,10 @@ describe("PublicController appointment creation", () => {
       }
     );
     expect(res.status).toHaveBeenCalledWith(201);
+    expect(res.setHeader).toHaveBeenCalledWith("Cache-Control", "no-store");
     expect(res.json).toHaveBeenCalledWith({
       id: "appointment-1",
+      managementToken: "test-private-token",
       serviceId: "service-1",
       professionalId: "professional-1",
       startAt: "2026-10-01T12:00:00.000Z",
