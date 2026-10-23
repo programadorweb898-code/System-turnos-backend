@@ -168,7 +168,9 @@ createAppointment = async (req: Request, res: Response): Promise<void> => {
     try {
       const appointment = await this.service.createAppointment(publicKey, req.body);
 
+      res.setHeader("Cache-Control", "no-store");
       res.status(201).json({
+        managementToken: appointment.managementToken,
         id: appointment.id,
         serviceId: appointment.serviceId,
         professionalId: appointment.professionalId,
