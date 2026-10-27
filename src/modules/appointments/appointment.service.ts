@@ -8,6 +8,7 @@ import {
 } from "./appointment.repository.js";
 import { CreateAppointmentInput } from "./appointment.types.js";
 import { validateCreateAppointmentInput } from "./appointment.validation.js";
+import { isWithinBusinessHours } from "./appointment.time.js";
 
 export class AppointmentConflictError extends Error {}
 export class AppointmentNotFoundError extends Error {}
@@ -31,7 +32,7 @@ export class AppointmentService {
 
     if (context.blocked) throw new AppointmentConflictError("El horario seleccionado está bloqueado.");
 
-    if (!this.isWithinBusinessHours(startAt, endAt, context.businessHours, context.tenant.timezone)) {
+    if (!isWithinBusinessHours(startAt, endAt, context.businessHours, context.tenant.timezone)) {
       throw new AppointmentUnavailableError("El horario seleccionado está fuera del horario de atención.");
     }
 
@@ -106,54 +107,6 @@ export class AppointmentService {
       }
       throw error;
     }
-  }
-
-  private isWithinBusinessHours(startAt: Date, endAt: Date, businessHours: Array<{ dayOfWeek: number; startTime: string; endTime: string }>, timezone: string): boolean {
-    const start = this.getLocalParts(startAt, timezone);
-    const end = this.getLocalParts(endAt, timezone);
-
-    if (start.year !== end.year || start.month !== end.month || start.day !== end.day || start.weekday !== end.weekday) {
-      return false;
-    }
-
-    const intervals = businessHours.filter((hour) => hour.dayOfWeek === start.weekday);
-    const startMinutes = start.hour * 60 + start.minute;
-    const endMinutes = end.hour * 60 + end.minute;
-
-    return intervals.some((interval) => {
-      const openMinutes = this.toMinutes(interval.startTime);
-      const closeMinutes = this.toMinutes(interval.endTime);
-      return startMinutes >= openMinutes && endMinutes <= closeMinutes;
-    });
-  }
-
-  private getLocalParts(date: Date, timezone: string) {
-    const parts = new Intl.DateTimeFormat("en-US", {
-      timeZone: timezone, weekday: "short", year: "numeric", month: "2-digit",
-      day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23"
-    }).formatToParts(date);
-
-    const values = Object.fromEntries(
-      parts.filter((part) => part.type !== "literal").map((part) => [part.type, Number(part.value)])
-    );
-
-    const weekdayMap: Record<string, number> = {
-      Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6
-    };
-
-    return {
-      year: values.year,
-      month: values.month,
-      day: values.day,
-      weekday: weekdayMap[parts.find((part) => part.type === "weekday")?.value ?? ""],
-      hour: values.hour,
-      minute: values.minute
-    };
-  }
-
-  private toMinutes(value: string): number {
-    const [hours, minutes] = value.slice(0, 5).split(":").map(Number);
-    return hours * 60 + minutes;
   }
 
   private isExclusionConstraintError(error: unknown): boolean {
